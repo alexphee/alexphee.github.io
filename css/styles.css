@@ -10166,3 +10166,12 @@ margin-top: 20px;
   display: inline;
 }
 
+.gear{
+  padding-left: 0;
+  margin-left: 0%;
+  position: fixed;
+  left: 0px;
+  bottom: 0px;
+  z-index: 40000;
+  width: inherit;
+}
