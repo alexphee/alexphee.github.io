@@ -51,4 +51,4 @@ $(function() {
             "transform": rotationStr
         });
     });
-})
+})(jQuery);
