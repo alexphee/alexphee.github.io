@@ -1,4 +1,12 @@
 
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        var welcomeScreen = document.getElementById('welcome-screen');
+        welcomeScreen.parentNode.removeChild(welcomeScreen);
+        document.getElementById('content').style.filter = 'none';
+    }, 1000); // Change this value for longer/shorter delay
+});
+    
     (function ($) {
     "use strict";
 
@@ -52,3 +60,4 @@ $(function() {
         });
     });
 })(jQuery);
+
