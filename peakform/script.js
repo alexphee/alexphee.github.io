@@ -1,6 +1,6 @@
 const SUPABASE_URL = 'https://eqyfqrhdwneddizfrdjq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r4ax1Hb3sM4DwAcNk22B4A_c9H-6yAd';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let localPRs = [];
@@ -199,21 +199,21 @@ fabAdd.onclick = () => {
 loginBtn.onclick = async () => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) alert(error.message);
 };
 
 signupBtn.onclick = async () => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await .auth.signUp({ email, password });
   if (error) alert(error.message);
   else alert('Account created! Please check your email to confirm signup.');
 };
 
-logoutBtn.onclick = async () => { await supabase.auth.signOut(); };
+logoutBtn.onclick = async () => { await .auth.signOut(); };
 
-supabase.auth.onAuthStateChange(async (event, session) => {
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
   if (session) {
     currentUser = session.user;
     userDisplay.textContent = `@${currentUser.email.split('@')[0]}`;
@@ -232,27 +232,27 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 
 // Supabase Data Sync
 async function fetchAllUserData() {
-  const { data: prData } = await supabase.from('prs').select('*').order('created_at', { ascending: true });
+  const { data: prData } = await supabaseClient.from('prs').select('*').order('created_at', { ascending: true });
   localPRs = prData || [];
 
-  const { data: routineData } = await supabase.from('routines').select('*');
+  const { data: routineData } = await supabaseClient.from('routines').select('*');
   localRoutines = {};
   if (routineData && routineData.length > 0) {
     routineData.forEach(r => { localRoutines[r.day_name] = { title: r.title, exercises: r.exercises }; });
   } else {
     localRoutines = JSON.parse(JSON.stringify(defaultRoutines));
     for (const [dName, dVal] of Object.entries(localRoutines)) {
-      await supabase.from('routines').insert([{ day_name: dName, title: dVal.title, exercises: dVal.exercises }]);
+      await supabaseClient.from('routines').insert([{ day_name: dName, title: dVal.title, exercises: dVal.exercises }]);
     }
   }
 
-  const { data: libData } = await supabase.from('library').select('*');
+  const { data: libData } = await supabaseClient.from('library').select('*');
   if (libData && libData.length > 0) {
     localLibrary = libData;
   } else {
     localLibrary = defaultLibrary;
     const seedItems = defaultLibrary.map(i => ({ user_id: currentUser.id, exercise: i.exercise, group_name: i.group_name }));
-    await supabase.from('library').insert(seedItems);
+    await supabaseClient.from('library').insert(seedItems);
   }
 }
 
@@ -268,12 +268,12 @@ async function autoMigrateLocalStorage() {
     const prInserts = userData.prs.map(p => ({
       user_id: currentUser.id, exercise: p.exercise, category: p.category, weight: p.weight, reps: p.reps, history: p.history || []
     }));
-    await supabase.from('prs').insert(prInserts);
+    await supabaseClient.from('prs').insert(prInserts);
   }
 
   if (userData.routines) {
     for (const [dName, dVal] of Object.entries(userData.routines)) {
-      await supabase.from('routines').upsert([{ user_id: currentUser.id, day_name: dName, title: dVal.title, exercises: dVal.exercises }], { onConflict: 'user_id, day_name' });
+      await supabaseClient.from('routines').upsert([{ user_id: currentUser.id, day_name: dName, title: dVal.title, exercises: dVal.exercises }], { onConflict: 'user_id, day_name' });
     }
   }
 
@@ -381,7 +381,7 @@ function renderRoutineDay(dayName) {
 
 async function saveRoutineDayToSupabase(dayName) {
   const dayData = localRoutines[dayName];
-  await supabase.from('routines').upsert([{
+  await supabaseClient.from('routines').upsert([{
     user_id: currentUser.id,
     day_name: dayName,
     title: dayData.title,
@@ -455,7 +455,7 @@ routineForm.onsubmit = async (e) => {
 
   const existsInLib = localLibrary.some(l => l.exercise.toLowerCase() === exercise.toLowerCase());
   if (!existsInLib) {
-    const { data } = await supabase.from('library').insert([{ user_id: currentUser.id, exercise, group_name: muscleGroup }]).select();
+    const { data } = await supabaseClient.from('library').insert([{ user_id: currentUser.id, exercise, group_name: muscleGroup }]).select();
     if (data && data.length) localLibrary.push(data[0]);
   }
 
@@ -506,10 +506,10 @@ prForm.onsubmit = async (e) => {
     if (weight > existing.weight || history.length === 0) {
       history.push({ date: dateStr, weight });
     }
-    await supabase.from('prs').update({ exercise, category, weight, reps, history }).eq('id', id);
+    await supabaseClient.from('prs').update({ exercise, category, weight, reps, history }).eq('id', id);
   } else {
     const history = [{ date: dateStr, weight }];
-    await supabase.from('prs').insert([{ user_id: currentUser.id, exercise, category, weight, reps, history }]);
+    await supabaseClient.from('prs').insert([{ user_id: currentUser.id, exercise, category, weight, reps, history }]);
   }
 
   closeModal();
@@ -523,7 +523,7 @@ window.editPr = (id) => {
 };
 
 window.deletePr = async (id) => {
-  await supabase.from('prs').delete().eq('id', id);
+  await supabaseClient.from('prs').delete().eq('id', id);
   await fetchAllUserData();
   renderPRs();
 };
@@ -667,7 +667,7 @@ window.deleteHistoryPoint = async (prId, index) => {
   pr.history.splice(index, 1);
   const maxWeight = pr.history.length > 0 ? Math.max(...pr.history.map(h => h.weight)) : 0;
 
-  await supabase.from('prs').update({ weight: maxWeight, history: pr.history }).eq('id', prId);
+  await supabaseClient.from('prs').update({ weight: maxWeight, history: pr.history }).eq('id', prId);
   await fetchAllUserData();
   renderChartForExercise(prId);
 };
