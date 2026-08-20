@@ -206,7 +206,7 @@ loginBtn.onclick = async () => {
 signupBtn.onclick = async () => {
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
-  const { data, error } = await .auth.signUp({ email, password });
+  const { data, error } = await auth.signUp({ email, password });
   if (error) alert(error.message);
   else alert('Account created! Please check your email to confirm signup.');
 };
