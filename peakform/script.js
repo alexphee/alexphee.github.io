@@ -1,6 +1,7 @@
 const SUPABASE_URL = 'https://eqyfqrhdwneddizfrdjq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r4ax1Hb3sM4DwAcNk22B4A_c9H-6yAd';
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Initialize Supabase Client
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let localPRs = [];
@@ -195,23 +196,39 @@ fabAdd.onclick = () => {
   else if (currentActiveTab === 'records') openModal();
 };
 
-// Supabase Auth
-loginBtn.onclick = async () => {
+// Supabase Auth Handlers
+loginBtn.addEventListener('click', async (e) => {
+  e.preventDefault();
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
+
+  if (!email || !password) {
+    alert('Please enter both email and password.');
+    return;
+  }
+
   const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (error) alert(error.message);
-};
+});
 
-signupBtn.onclick = async () => {
+signupBtn.addEventListener('click', async (e) => {
+  e.preventDefault();
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
-  const { data, error } = await auth.signUp({ email, password });
-  if (error) alert(error.message);
-  else alert('Account created! Please check your email to confirm signup.');
-};
 
-logoutBtn.onclick = async () => { await auth.signOut(); };
+  if (!email || !password) {
+    alert('Please enter both email and password.');
+    return;
+  }
+
+  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  if (error) alert(error.message);
+  else alert('Account created! Please check your email if confirmation is enabled.');
+});
+
+logoutBtn.onclick = async () => { 
+  await supabaseClient.auth.signOut(); 
+};
 
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
   if (session) {
@@ -686,19 +703,7 @@ function resetDashboardView() {
   tabChart.classList.remove('active');
 }
 
-// App Initialization
-function initApp() {
-  if (currentUser) {
-    authView.classList.add('hidden');
-    appView.classList.remove('hidden');
-    userDisplay.textContent = `@${currentUser.email.split('@')[0]}`;
-    resetDashboardView();
-  } else {
-    authView.classList.remove('hidden');
-    appView.classList.add('hidden');
-  }
-}
-
+// Service Worker for PWA
 if ('serviceWorker' in navigator) {
   const swCode = `self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode], { type: 'text/javascript' })));
