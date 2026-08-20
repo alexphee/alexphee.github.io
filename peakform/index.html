@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peak Form - Workout & PR Tracker</title>
+  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Peak%20Form%22,%22short_name%22:%22PeakForm%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f172a%22,%22theme_color%22:%22%230f172a%22}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- External Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Auth View -->
+  <div id="auth-view" class="auth-container">
+    <h1>Peak Form</h1>
+    <p>Sign in or create an account</p>
+    <form id="auth-form" class="glass-card">
+      <input type="email" id="email" placeholder="Email Address" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <div class="auth-actions">
+        <button type="button" id="login-btn" class="btn-primary">Login</button>
+        <button type="button" id="signup-btn" class="btn-secondary">Sign Up</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Dashboard View -->
+  <div id="app-view" class="hidden">
+    <div class="app-header">
+      <div>
+        <h2>Peak Form</h2>
+        <span class="user-tag" id="user-display"></span>
+      </div>
+      <button class="logout-btn" id="logout-btn">Logout</button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="tab-btn" id="tab-routine">Workout Routine</button>
+      <button class="tab-btn" id="tab-records">PR List</button>
+      <button class="tab-btn" id="tab-chart">History Graph</button>
+    </div>
+
+    <!-- Landing View -->
+    <div id="landing-view" class="empty-state" style="padding-top: 60px;">
+      <p style="font-size: 1.1rem; color: #f8fafc; font-weight: 600; margin-bottom: 8px;">Welcome back!</p>
+      <p style="color: #64748b;">Select a tab above to view your workout schedule, track PRs, or view progress graphs.</p>
+    </div>
+
+    <!-- Routine View -->
+    <div id="routine-view" class="hidden">
+      <div class="day-selector">
+        <div class="day-pill active" onclick="selectDay('Monday')">Mon</div>
+        <div class="day-pill" onclick="selectDay('Tuesday')">Tue</div>
+        <div class="day-pill" onclick="selectDay('Wednesday')">Wed</div>
+        <div class="day-pill" onclick="selectDay('Thursday')">Thu</div>
+        <div class="day-pill" onclick="selectDay('Friday')">Fri</div>
+        <div class="day-pill" onclick="selectDay('Saturday')">Sat</div>
+        <div class="day-pill" onclick="selectDay('Sunday')">Sun</div>
+      </div>
+      <div class="routine-header-row">
+        <div id="routine-title" class="routine-title">Upper - Chest/Back focus</div>
+        <button class="btn-icon" onclick="openDayTitleModal()" title="Edit Day Title">✎</button>
+      </div>
+      <div id="routine-container"></div>
+    </div>
+
+    <!-- Records View -->
+    <div id="records-view" class="hidden">
+      <input type="text" id="search-bar" placeholder="Search exercise or muscle group (e.g., Chest)...">
+      <div id="pr-container"></div>
+    </div>
+
+    <!-- Chart View -->
+    <div id="chart-view" class="hidden">
+      <select id="chart-select" style="margin-bottom: 16px;">
+        <option value="" disabled selected>Select Exercise to View Graph</option>
+      </select>
+      <div class="glass-card">
+        <canvas id="prChart"></canvas>
+      </div>
+      <div class="history-manager" id="history-manager"></div>
+    </div>
+
+    <button class="fab hidden" id="fab-add" title="Add">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+  </div>
+
+  <!-- PR Form Modal Dialog -->
+  <div id="pr-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title" id="modal-title">Add New PR</div>
+      <form id="pr-form">
+        <input type="hidden" id="edit-id">
+        <input type="text" id="exercise" placeholder="Exercise name" required>
+        <select id="category" required>
+          <option value="" disabled selected>Muscle Group</option>
+          <option value="Chest">Chest</option>
+          <option value="Back">Back</option>
+          <option value="Legs">Legs</option>
+          <option value="Shoulders">Shoulders</option>
+          <option value="Biceps">Biceps</option>
+          <option value="Triceps">Triceps</option>
+          <option value="Core">Core</option>
+          <option value="Run">Run</option>
+          <option value="Walk">Walk</option>
+        </select>
+        <input type="number" id="weight" placeholder="Weight (kg)" step="0.5" min="0" required>
+        <input type="number" id="reps" placeholder="Reps" min="0" required>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary" id="save-btn">Save</button>
+          <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Routine Exercise Modal -->
+  <div id="routine-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title">Add/Edit Routine Exercise</div>
+      <form id="routine-form">
+        <input type="hidden" id="routine-edit-idx">
+        
+        <div class="input-with-btn">
+          <input type="text" id="routine-ex-name" placeholder="Exercise Name" required>
+          <button type="button" class="btn-secondary" id="open-library-btn" title="Browse Library">📋 Menu</button>
+        </div>
+
+        <select id="routine-ex-group" required>
+          <option value="" disabled selected>Muscle Group</option>
+          <option value="Chest">Chest</option>
+          <option value="Back">Back</option>
+          <option value="Legs">Legs</option>
+          <option value="Shoulders">Shoulders</option>
+          <option value="Biceps">Biceps</option>
+          <option value="Triceps">Triceps</option>
+          <option value="Core">Core</option>
+          <option value="Run">Run</option>
+          <option value="Walk">Walk</option>
+        </select>
+        <input type="text" id="routine-ex-sets" placeholder="Sets (e.g., 3 or 1 WU + 3)" required>
+        <input type="text" id="routine-ex-reps" placeholder="Reps (e.g., 8-10 or MAX)" required>
+        <input type="text" id="routine-ex-target" placeholder="Target (e.g., Lats, width)">
+        <input type="text" id="routine-ex-rotation" placeholder="Rotation (e.g., T-bar Row)">
+        <input type="text" id="routine-ex-tips" placeholder="Tips (e.g., Pause 1 sec at contraction)">
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Save Exercise</button>
+          <button type="button" class="btn-secondary" id="routine-cancel-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Collapsible Exercise Library Menu Modal -->
+  <div id="library-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title">Exercise Library</div>
+      <div class="modal-subtitle">Tap [+] to expand muscle group</div>
+      <div id="library-accordion"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="library-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day Title Modal -->
+  <div id="day-title-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title">Edit Workout Focus</div>
+      <form id="day-title-form">
+        <input type="text" id="day-title-input" placeholder="e.g., Upper - Chest/Back focus" required>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Save Focus</button>
+          <button type="button" class="btn-secondary" id="day-title-cancel-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Percentage Modal Dialog -->
+  <div id="percent-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title" id="percent-title">Exercise Breakdown</div>
+      <div class="modal-subtitle" id="percent-subtitle">PR Weight Calculations</div>
+      <div id="one-rm-box" class="one-rm-banner"></div>
+      <div class="percent-columns" id="percent-columns"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="percent-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Script -->
+  <script src="script.js"></script>
+</body>
+</html>
