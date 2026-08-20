@@ -211,7 +211,7 @@ signupBtn.onclick = async () => {
   else alert('Account created! Please check your email to confirm signup.');
 };
 
-logoutBtn.onclick = async () => { await .auth.signOut(); };
+logoutBtn.onclick = async () => { await auth.signOut(); };
 
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
   if (session) {
