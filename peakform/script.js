@@ -1,4 +1,3 @@
-// ⚠️ REPLACE WITH YOUR SUPABASE CREDENTIALS
 const SUPABASE_URL = 'https://eqyfqrhdwneddizfrdjq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r4ax1Hb3sM4DwAcNk22B4A_c9H-6yAd';
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
