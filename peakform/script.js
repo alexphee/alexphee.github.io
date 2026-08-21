@@ -1,6 +1,5 @@
 const SUPABASE_URL = 'https://eqyfqrhdwneddizfrdjq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_r4ax1Hb3sM4DwAcNk22B4A_c9H-6yAd';
-// Initialize Supabase Client
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
@@ -11,112 +10,31 @@ let selectedDayName = 'Monday';
 let chartInstance = null;
 let currentActiveTab = null;
 
-// Seeds
+// Clean Default Library Seed
 const defaultLibrary = [
   { exercise: "Bench Press", group_name: "Chest" },
   { exercise: "Incline DB Press", group_name: "Chest" },
-  { exercise: "Cable Fly", group_name: "Chest" },
-  { exercise: "Machine Chest Press", group_name: "Chest" },
   { exercise: "Pull Ups", group_name: "Back" },
   { exercise: "Seated Cable Row", group_name: "Back" },
-  { exercise: "Lat Pulldown", group_name: "Back" },
-  { exercise: "Chest Supported Row", group_name: "Back" },
-  { exercise: "Smith Back Squat", group_name: "Legs" },
-  { exercise: "Leg Press", group_name: "Legs" },
-  { exercise: "RDL", group_name: "Legs" },
-  { exercise: "Hack Squat", group_name: "Legs" },
+  { exercise: "Squat", group_name: "Legs" },
+  { exercise: "Deadlift", group_name: "Legs" },
   { exercise: "Overhead Press", group_name: "Shoulders" },
-  { exercise: "Lateral Raises", group_name: "Shoulders" },
-  { exercise: "Rear Delt Flies", group_name: "Shoulders" },
-  { exercise: "Preacher Curl", group_name: "Biceps" },
-  { exercise: "EZ Bar Curls", group_name: "Biceps" },
-  { exercise: "Incline DB Curl", group_name: "Biceps" },
-  { exercise: "Hammer Curl", group_name: "Biceps" },
-  { exercise: "Skull Crushers", group_name: "Triceps" },
-  { exercise: "Close Grip Bench Press", group_name: "Triceps" },
-  { exercise: "Rope Pushdown", group_name: "Triceps" },
-  { exercise: "Cable French Press", group_name: "Triceps" }
+  { exercise: "Barbell Curl", group_name: "Biceps" },
+  { exercise: "Tricep Pushdown", group_name: "Triceps" },
+  { exercise: "Running", group_name: "Run" },
+  { exercise: "Trail Running", group_name: "Trail" },
+  { exercise: "Incline Walking", group_name: "Walk" }
 ];
 
+// Clean Default Empty Routines
 const defaultRoutines = {
-  Monday: {
-    title: "Upper - Chest/Back focus",
-    exercises: [
-      { exercise: "Pull Ups", muscleGroup: "Back", sets: "4", reps: "MAX", target: "Lats, Back width", rotation: "Neutral grip/Chin Ups", tips: "Elbows to hips/ Full stretch" },
-      { exercise: "Bench Press", muscleGroup: "Chest", sets: "1 WU + 3", reps: "MAX", target: "Mid chest, sternal head", rotation: "Test", tips: "" },
-      { exercise: "Seated Cable Row", muscleGroup: "Back", sets: "3", reps: "MAX", target: "Rhomboids, mid traps", rotation: "T-bar Row", tips: "Pause 1 sec at contraction" },
-      { exercise: "Incline DB Press", muscleGroup: "Chest", sets: "3", reps: "6-8", target: "Clavicular head", rotation: "", tips: "30° for upper chest" },
-      { exercise: "Preacher Curl", muscleGroup: "Biceps", sets: "3", reps: "8-10", target: "Biceps long head, overall mass", rotation: "Barbell Curl", tips: "" },
-      { exercise: "Skull Crushers", muscleGroup: "Triceps", sets: "3", reps: "8-10", target: "Triceps long head", rotation: "", tips: "EZ bar inside grips, bar behind head" },
-      { exercise: "Chest Supported Row", muscleGroup: "Back", sets: "3", reps: "8-10", target: "Upper back, rhomboids, rear delts", rotation: "", tips: "" },
-      { exercise: "Machine Chest Press", muscleGroup: "Chest", sets: "3", reps: "6-8", target: "Mid-lower chest, sternal fibers", rotation: "Pec Deck", tips: "" }
-    ]
-  },
-  Tuesday: {
-    title: "Lower - Legs/Shoulders",
-    exercises: [
-      { exercise: "Smith Back Squat", muscleGroup: "Legs", sets: "1 WU + 3", reps: "6-8", target: "Quads, glutes", rotation: "Leg Press (feet low)", tips: "" },
-      { exercise: "Leg Press", muscleGroup: "Legs", sets: "3", reps: "8-10", target: "Quads, vastus lateralis & medialis", rotation: "", tips: "" },
-      { exercise: "Overhead Press", muscleGroup: "Shoulders", sets: "3", reps: "10", target: "Front delts", rotation: "Arnold Press", tips: "Stop just before lockout" },
-      { exercise: "RDL", muscleGroup: "Legs", sets: "3", reps: "MAX", target: "Hamstrings, glutes", rotation: "", tips: "" },
-      { exercise: "Lateral Raises", muscleGroup: "Shoulders", sets: "4", reps: "12-15", target: "Side delts, shoulder width", rotation: "Cable lateral raises", tips: "" },
-      { exercise: "Standing Calf Raises", muscleGroup: "Legs", sets: "4", reps: "15", target: "Gastrcnemius", rotation: "", tips: "" },
-      { exercise: "Hanging Leg Raises", muscleGroup: "Core", sets: "3", reps: "12-15", target: "Lower abs", rotation: "", tips: "" },
-      { exercise: "Ball crunches", muscleGroup: "Core", sets: "3", reps: "15-20", target: "Upper abs", rotation: "", tips: "" }
-    ]
-  },
-  Wednesday: {
-    title: "Running",
-    exercises: [
-      { exercise: "Running", muscleGroup: "Run", sets: "1", reps: "6-8km", target: "Cardiovascular endurance, fat oxidation", rotation: "", tips: "" }
-    ]
-  },
-  Thursday: {
-    title: "Upper - Arms focus",
-    exercises: [
-      { exercise: "Lat Pulldown", muscleGroup: "Back", sets: "3", reps: "10", target: "Lats, width", rotation: "Single Arm Pulldown", tips: "" },
-      { exercise: "Close Grip Bench Press", muscleGroup: "Triceps", sets: "4", reps: "6-8", target: "Triceps medial, lateral head", rotation: "Dips", tips: "Elbows super close to body" },
-      { exercise: "Cable Fly", muscleGroup: "Chest", sets: "3", reps: "12-15", target: "Inner chest, chest stretch contraction", rotation: "DB Flies", tips: "" },
-      { exercise: "EZ Bar Curls", muscleGroup: "Biceps", sets: "4", reps: "8-10", target: "Overall mass", rotation: "", tips: "" },
-      { exercise: "Rope Pushdown", muscleGroup: "Triceps", sets: "3", reps: "12", target: "Triceps lateral head", rotation: "", tips: "Spread rope at bottom" },
-      { exercise: "Incline DB Curl", muscleGroup: "Biceps", sets: "3", reps: "10-12", target: "Biceps long head, stretch emphasis", rotation: "", tips: "" },
-      { exercise: "Cable French Press", muscleGroup: "Triceps", sets: "3", reps: "10-12", target: "Tricep long head", rotation: "", tips: "" },
-      { exercise: "Hammer Curl", muscleGroup: "Biceps", sets: "3", reps: "10", target: "Brachialis, Brachioradialis, arm thickness", rotation: "", tips: "Slow tempo" }
-    ]
-  },
-  Friday: {
-    title: "Lower - Hypertrophy",
-    exercises: [
-      { exercise: "Hack Squat", muscleGroup: "Legs", sets: "3", reps: "8-10", target: "Quads", rotation: "", tips: "" },
-      { exercise: "Bulgarian Split Squat", muscleGroup: "Legs", sets: "3", reps: "10", target: "Quads, glutes", rotation: "", tips: "" },
-      { exercise: "Lateral Raises", muscleGroup: "Shoulders", sets: "4", reps: "15", target: "Side delts", rotation: "", tips: "" },
-      { exercise: "Hamstring Curls", muscleGroup: "Legs", sets: "3", reps: "12", target: "Hamstrings", rotation: "", tips: "" },
-      { exercise: "Rear Delt Flies", muscleGroup: "Shoulders", sets: "3", reps: "10-12", target: "Delts", rotation: "Face Pulls", tips: "" },
-      { exercise: "Seated Calf Raises", muscleGroup: "Legs", sets: "4", reps: "15", target: "Overall thickness", rotation: "", tips: "" },
-      { exercise: "Leg Extensions Dropset", muscleGroup: "Legs", sets: "3", reps: "12-15", target: "Quads", rotation: "", tips: "Hold 2 sec on top, 3 sec negative" }
-    ]
-  },
-  Saturday: {
-    title: "Upper - Balanced pump",
-    exercises: [
-      { exercise: "Bench Press", muscleGroup: "Chest", sets: "1 WU + 3", reps: "8-10", target: "Mid chest, sternal head", rotation: "", tips: "" },
-      { exercise: "Single-arm lat pulldown", muscleGroup: "Back", sets: "3", reps: "12", target: "Lower lats", rotation: "", tips: "" },
-      { exercise: "Incline Dumbbell Press", muscleGroup: "Chest", sets: "3", reps: "12", target: "Upper chest", rotation: "", tips: "" },
-      { exercise: "Seated Cable Row", muscleGroup: "Back", sets: "3", reps: "8-10", target: "Rhomboids, mid traps", rotation: "Straight-arm pulldown", tips: "" },
-      { exercise: "Hammer Curl", muscleGroup: "Biceps", sets: "3", reps: "10", target: "Brachialis, Brachioradialis, arm thickness", rotation: "", tips: "" },
-      { exercise: "Straight Bar Pushdown", muscleGroup: "Triceps", sets: "3", reps: "12", target: "Triceps lateral head", rotation: "", tips: "" },
-      { exercise: "Concentration curls", muscleGroup: "Biceps", sets: "3", reps: "10", target: "Biceps peak contraction", rotation: "", tips: "" },
-      { exercise: "Single-arm kickbacks", muscleGroup: "Triceps", sets: "3", reps: "12", target: "Triceps - All heads", rotation: "", tips: "" },
-      { exercise: "Crunches", muscleGroup: "Core", sets: "3", reps: "15-20", target: "Upper abs", rotation: "", tips: "" },
-      { exercise: "Heel touches", muscleGroup: "Core", sets: "3", reps: "20", target: "Obliques", rotation: "", tips: "" }
-    ]
-  },
-  Sunday: {
-    title: "Recovery",
-    exercises: [
-      { exercise: "Incline walking", muscleGroup: "Walk", sets: "1", reps: "30-40 min", target: "Fat burning, active recovery", rotation: "", tips: "" }
-    ]
-  }
+  Monday: { title: "Workout Title", exercises: [] },
+  Tuesday: { title: "Workout Title", exercises: [] },
+  Wednesday: { title: "Workout Title", exercises: [] },
+  Thursday: { title: "Workout Title", exercises: [] },
+  Friday: { title: "Workout Title", exercises: [] },
+  Saturday: { title: "Workout Title", exercises: [] },
+  Sunday: { title: "Workout Title", exercises: [] }
 };
 
 // Elements
@@ -145,6 +63,9 @@ const prModal = document.getElementById('pr-modal');
 const prForm = document.getElementById('pr-form');
 const cancelBtn = document.getElementById('cancel-btn');
 const modalTitle = document.getElementById('modal-title');
+const categorySelect = document.getElementById('category');
+const weightInput = document.getElementById('weight');
+const repsInput = document.getElementById('reps');
 
 const routineModal = document.getElementById('routine-modal');
 const routineForm = document.getElementById('routine-form');
@@ -166,6 +87,15 @@ const percentSubtitle = document.getElementById('percent-subtitle');
 const oneRmBox = document.getElementById('one-rm-box');
 const percentColumns = document.getElementById('percent-columns');
 const percentCloseBtn = document.getElementById('percent-close-btn');
+
+// Dynamic Form Field Label Switch for Cardio
+categorySelect.onchange = () => updatePRModalLabels();
+
+function updatePRModalLabels() {
+  const isCardio = ['Run', 'Walk', 'Trail'].includes(categorySelect.value);
+  weightInput.placeholder = isCardio ? "Distance (km)" : "Weight (kg)";
+  repsInput.placeholder = isCardio ? "Time (min)" : "Reps";
+}
 
 // Navigation Tabs
 tabRoutine.onclick = () => switchTab('routine');
@@ -213,17 +143,25 @@ loginBtn.addEventListener('click', async (e) => {
 
 signupBtn.addEventListener('click', async (e) => {
   e.preventDefault();
+  const username = document.getElementById('username').value.trim();
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
 
-  if (!email || !password) {
-    alert('Please enter both email and password.');
+  if (!username || !email || !password) {
+    alert('Please fill in a username, email, and password to sign up.');
     return;
   }
 
-  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { username }
+    }
+  });
+
   if (error) alert(error.message);
-  else alert('Account created! Please check your email if confirmation is enabled.');
+  else alert('Account created! Check your email if confirmation is required.');
 });
 
 logoutBtn.onclick = async () => { 
@@ -233,7 +171,10 @@ logoutBtn.onclick = async () => {
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
   if (session) {
     currentUser = session.user;
-    userDisplay.textContent = `@${currentUser.email.split('@')[0]}`;
+    // Prefer custom metadata username, fallback to email prefix
+    const customName = currentUser.user_metadata?.username || currentUser.email.split('@')[0];
+    userDisplay.textContent = `@${customName}`;
+    
     authView.classList.add('hidden');
     appView.classList.remove('hidden');
     
@@ -276,7 +217,7 @@ async function fetchAllUserData() {
 // Auto-Migration Function
 async function autoMigrateLocalStorage() {
   const usersLS = JSON.parse(localStorage.getItem('prs_users')) || {};
-  const username = currentUser.email.split('@')[0];
+  const username = currentUser.user_metadata?.username || currentUser.email.split('@')[0];
   const userData = usersLS[username] || usersLS[currentUser.email];
 
   if (!userData || userData.migrated) return;
@@ -308,7 +249,7 @@ libraryCloseBtn.onclick = () => libraryModal.classList.add('hidden');
 
 function renderLibraryAccordion() {
   libraryAccordion.innerHTML = '';
-  const groups = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps", "Core", "Run", "Walk"];
+  const groups = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps", "Core", "Run", "Walk", "Trail"];
 
   groups.forEach(groupName => {
     const items = localLibrary.filter(item => item.group_name === groupName);
@@ -495,12 +436,15 @@ function openModal(pr = null) {
     modalTitle.textContent = 'Edit PR';
     document.getElementById('edit-id').value = pr.id;
     document.getElementById('exercise').value = pr.exercise;
-    document.getElementById('category').value = pr.category;
-    document.getElementById('weight').value = pr.weight;
-    document.getElementById('reps').value = pr.reps;
+    categorySelect.value = pr.category;
+    updatePRModalLabels();
+    weightInput.value = pr.weight;
+    repsInput.value = pr.reps;
   } else {
     modalTitle.textContent = 'Add New PR';
     document.getElementById('edit-id').value = '';
+    categorySelect.selectedIndex = 0;
+    updatePRModalLabels();
   }
   prModal.classList.remove('hidden');
 }
@@ -512,9 +456,9 @@ prForm.onsubmit = async (e) => {
   e.preventDefault();
   const id = document.getElementById('edit-id').value;
   const exercise = document.getElementById('exercise').value.trim();
-  const category = document.getElementById('category').value;
-  const weight = Math.max(0, parseFloat(document.getElementById('weight').value) || 0);
-  const reps = Math.max(0, parseInt(document.getElementById('reps').value) || 0);
+  const category = categorySelect.value;
+  const weight = Math.max(0, parseFloat(weightInput.value) || 0);
+  const reps = Math.max(0, parseFloat(repsInput.value) || 0);
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   if (id) {
@@ -550,19 +494,27 @@ window.showPercentages = (id) => {
   const pr = localPRs.find(p => p.id === id);
   if (!pr) return;
 
-  percentTitle.textContent = pr.exercise;
-  percentSubtitle.textContent = `100% PR = ${pr.weight} kg (${pr.reps} reps)`;
+  const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
 
-  const est1RM = pr.reps === 1 ? pr.weight : Math.round(pr.weight * (1 + pr.reps / 30));
-  oneRmBox.textContent = `Est. 1-Rep Max (1RM): ~${est1RM} kg`;
+  percentTitle.textContent = pr.exercise;
+  
+  if (isCardio) {
+    percentSubtitle.textContent = `Best: ${pr.weight} km in ${pr.reps} min`;
+    oneRmBox.textContent = `Pace: ~${(pr.reps / pr.weight).toFixed(2)} min/km`;
+  } else {
+    percentSubtitle.textContent = `100% PR = ${pr.weight} kg (${pr.reps} reps)`;
+    const est1RM = pr.reps === 1 ? pr.weight : Math.round(pr.weight * (1 + pr.reps / 30));
+    oneRmBox.textContent = `Est. 1-Rep Max (1RM): ~${est1RM} kg`;
+  }
 
   const percentages = [];
   for (let pct = 95; pct >= 50; pct -= 5) percentages.push(pct);
 
   const renderColumn = (pctList) => {
     return pctList.map(pct => {
-      const calculatedWeight = ((pr.weight * pct) / 100).toFixed(1);
-      return `<div class="percent-row"><span>${pct}%</span><span>${parseFloat(calculatedWeight)} kg</span></div>`;
+      const calculatedVal = ((pr.weight * pct) / 100).toFixed(1);
+      const unit = isCardio ? 'km' : 'kg';
+      return `<div class="percent-row"><span>${pct}%</span><span>${parseFloat(calculatedVal)} ${unit}</span></div>`;
     }).join('');
   };
 
@@ -577,7 +529,7 @@ window.showPercentages = (id) => {
 percentCloseBtn.onclick = () => percentModal.classList.add('hidden');
 searchBar.oninput = () => renderPRs();
 
-// Render PR List
+// Render PR List with Cardio-Aware Badges
 function renderPRs() {
   container.innerHTML = '';
   const filterText = searchBar.value.toLowerCase().trim();
@@ -587,7 +539,7 @@ function renderPRs() {
   );
 
   if (prs.length === 0) {
-    container.innerHTML = `<div class="empty-state">${filterText ? 'No matching exercises or muscle groups.' : 'No PRs recorded yet. Tap + to add one!'}</div>`;
+    container.innerHTML = `<div class="empty-state">${filterText ? 'No matching exercises or categories.' : 'No PRs recorded yet. Tap + to add one!'}</div>`;
     return;
   }
 
@@ -602,11 +554,14 @@ function renderPRs() {
     const ul = document.createElement('ul');
 
     items.forEach(pr => {
+      const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
+      const badgeText = isCardio ? `${pr.weight} km in ${pr.reps} min` : `${pr.weight} kg × ${pr.reps}`;
+
       ul.innerHTML += `
         <li>
           <strong class="pr-name">${pr.exercise}</strong>
           <div class="pr-right-group">
-            <span class="badge">${pr.weight} kg × ${pr.reps}</span>
+            <span class="badge">${badgeText}</span>
             <div class="actions">
               <button class="btn-icon" onclick="showPercentages(${pr.id})">%</button>
               <button class="btn-icon" onclick="editPr(${pr.id})">✎</button>
@@ -638,6 +593,9 @@ function renderChartForExercise(id) {
   const pr = localPRs.find(p => p.id === id);
   if (!pr || !pr.history) return;
 
+  const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
+  const unitLabel = isCardio ? 'km' : 'kg';
+
   const labels = pr.history.map(h => h.date);
   const data = pr.history.map(h => h.weight);
 
@@ -649,7 +607,7 @@ function renderChartForExercise(id) {
     data: {
       labels,
       datasets: [{
-        label: `${pr.exercise} (kg)`,
+        label: `${pr.exercise} (${unitLabel})`,
         data,
         borderColor: '#60a5fa',
         backgroundColor: 'rgba(96, 165, 250, 0.15)',
@@ -670,7 +628,7 @@ function renderChartForExercise(id) {
   pr.history.forEach((point, index) => {
     historyManager.innerHTML += `
       <div class="history-item">
-        <span><strong>${point.weight} kg</strong> on ${point.date}</span>
+        <span><strong>${point.weight} ${unitLabel}</strong> on ${point.date}</span>
         <button class="btn-icon del" onclick="deleteHistoryPoint(${pr.id}, ${index})">✕</button>
       </div>
     `;
@@ -703,8 +661,8 @@ function resetDashboardView() {
   tabChart.classList.remove('active');
 }
 
-// Service Worker for PWA
+// Service Worker Registration
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js')
-  .catch(err => console.log('ServiceWorker registration skipped:', err));
+    .catch(err => console.log('ServiceWorker registration skipped:', err));
 }
