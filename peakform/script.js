@@ -1,5 +1,7 @@
-const SUPABASE_URL = 'https://eqyfqrhdwneddizfrdjq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_r4ax1Hb3sM4DwAcNk22B4A_c9H-6yAd';
+// ⚠️ REPLACE WITH YOUR SUPABASE CREDENTIALS
+const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
@@ -10,20 +12,105 @@ let selectedDayName = 'Monday';
 let chartInstance = null;
 let currentActiveTab = null;
 
-// Clean Default Library Seed
+/// Enriched Default Exercise Library
 const defaultLibrary = [
-  { exercise: "Bench Press", group_name: "Chest" },
+  // Chest
+  { exercise: "Barbell Bench Press", group_name: "Chest" },
   { exercise: "Incline DB Press", group_name: "Chest" },
+  { exercise: "Flat DB Bench Press", group_name: "Chest" },
+  { exercise: "Incline Barbell Press", group_name: "Chest" },
+  { exercise: "Cable Fly", group_name: "Chest" },
+  { exercise: "Chest Dips", group_name: "Chest" },
+  { exercise: "Pec Deck Fly", group_name: "Chest" },
+  { exercise: "Machine Chest Press", group_name: "Chest" },
+  { exercise: "Push Ups", group_name: "Chest" },
+  { exercise: "Decline Bench Press", group_name: "Chest" },
+
+  // Back
   { exercise: "Pull Ups", group_name: "Back" },
+  { exercise: "Lat Pulldown", group_name: "Back" },
+  { exercise: "Barbell Bent Over Row", group_name: "Back" },
   { exercise: "Seated Cable Row", group_name: "Back" },
-  { exercise: "Squat", group_name: "Legs" },
-  { exercise: "Deadlift", group_name: "Legs" },
-  { exercise: "Overhead Press", group_name: "Shoulders" },
+  { exercise: "Single Arm DB Row", group_name: "Back" },
+  { exercise: "T-Bar Row", group_name: "Back" },
+  { exercise: "Chest Supported Row", group_name: "Back" },
+  { exercise: "Chin Ups", group_name: "Back" },
+  { exercise: "Face Pulls", group_name: "Back" },
+  { exercise: "Straight Arm Pulldown", group_name: "Back" },
+
+  // Legs
+  { exercise: "Barbell Back Squat", group_name: "Legs" },
+  { exercise: "Romanian Deadlift (RDL)", group_name: "Legs" },
+  { exercise: "Leg Press", group_name: "Legs" },
+  { exercise: "Bulgarian Split Squat", group_name: "Legs" },
+  { exercise: "Hack Squat", group_name: "Legs" },
+  { exercise: "Leg Extensions", group_name: "Legs" },
+  { exercise: "Lying Leg Curls", group_name: "Legs" },
+  { exercise: "Standing Calf Raises", group_name: "Legs" },
+  { exercise: "Seated Calf Raises", group_name: "Legs" },
+  { exercise: "Goblet Squat", group_name: "Legs" },
+
+  // Shoulders
+  { exercise: "Overhead Barbell Press", group_name: "Shoulders" },
+  { exercise: "Seated DB Shoulder Press", group_name: "Shoulders" },
+  { exercise: "Dumbbell Lateral Raises", group_name: "Shoulders" },
+  { exercise: "Cable Lateral Raises", group_name: "Shoulders" },
+  { exercise: "Arnold Press", group_name: "Shoulders" },
+  { exercise: "Rear Delt DB Flyes", group_name: "Shoulders" },
+  { exercise: "Reverse Pec Deck", group_name: "Shoulders" },
+  { exercise: "Front DB Raises", group_name: "Shoulders" },
+  { exercise: "Barbell Shrugs", group_name: "Shoulders" },
+  { exercise: "Upright Rows", group_name: "Shoulders" },
+
+  // Biceps
   { exercise: "Barbell Curl", group_name: "Biceps" },
-  { exercise: "Tricep Pushdown", group_name: "Triceps" },
-  { exercise: "Running", group_name: "Run" },
-  { exercise: "Trail Running", group_name: "Trail" },
-  { exercise: "Incline Walking", group_name: "Walk" }
+  { exercise: "Dumbbell Bicep Curl", group_name: "Biceps" },
+  { exercise: "Hammer Curls", group_name: "Biceps" },
+  { exercise: "Preacher Curl", group_name: "Biceps" },
+  { exercise: "Incline DB Curl", group_name: "Biceps" },
+  { exercise: "EZ Bar Curls", group_name: "Biceps" },
+  { exercise: "Cable Bicep Curl", group_name: "Biceps" },
+  { exercise: "Concentration Curls", group_name: "Biceps" },
+  { exercise: "Spider Curls", group_name: "Biceps" },
+
+  // Triceps
+  { exercise: "Tricep Rope Pushdown", group_name: "Triceps" },
+  { exercise: "Skull Crushers", group_name: "Triceps" },
+  { exercise: "Close Grip Bench Press", group_name: "Triceps" },
+  { exercise: "Tricep Overhead Extension", group_name: "Triceps" },
+  { exercise: "Cable French Press", group_name: "Triceps" },
+  { exercise: "Straight Bar Pushdown", group_name: "Triceps" },
+  { exercise: "Parallel Bar Dips", group_name: "Triceps" },
+  { exercise: "Single Arm Kickbacks", group_name: "Triceps" },
+  { exercise: "Bench Dips", group_name: "Triceps" },
+
+  // Core
+  { exercise: "Hanging Leg Raises", group_name: "Core" },
+  { exercise: "Cable Woodchoppers", group_name: "Core" },
+  { exercise: "Ab Wheel Rollouts", group_name: "Core" },
+  { exercise: "Crunches", group_name: "Core" },
+  { exercise: "Plank", group_name: "Core" },
+  { exercise: "Russian Twists", group_name: "Core" },
+  { exercise: "Heel Touches", group_name: "Core" },
+  { exercise: "Decline Sit-Ups", group_name: "Core" },
+  { exercise: "Cable Crunches", group_name: "Core" },
+
+  // Run
+  { exercise: "Road Running", group_name: "Run" },
+  { exercise: "Treadmill Run", group_name: "Run" },
+  { exercise: "Track Intervals", group_name: "Run" },
+  { exercise: "Tempo Run", group_name: "Run" },
+  { exercise: "Sprint Intervals", group_name: "Run" },
+
+  // Walk
+  { exercise: "Incline Treadmill Walk", group_name: "Walk" },
+  { exercise: "Outdoor Power Walk", group_name: "Walk" },
+  { exercise: "Weighted Vest Walk", group_name: "Walk" },
+
+  // Trail
+  { exercise: "Trail Run", group_name: "Trail" },
+  { exercise: "Mountain Hike", group_name: "Trail" },
+  { exercise: "Ultra Trail Run", group_name: "Trail" }
 ];
 
 // Clean Default Empty Routines
