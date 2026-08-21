@@ -1,6 +1,6 @@
 {
-"name": "Peak Form - Workout & PR Tracker",
-"short_name": "Peak Form",
+"name": "ApexPulse - Workout & PR Tracker",
+"short_name": "ApexPulse",
 "description": "Track workout routines, personal records, and
 progress history.",
 "start_url": "./peakform.html",
@@ -13,11 +13,16 @@ progress history.",
 "src": "data:image/svg+xml;utf8,<svg
 xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect
 width='512' height='512' rx='112' fill='%230b0f19'/><path d='M256
-96 L410 376 H330 L256 220 L182 376 H102 Z' fill='%2360a5fa'/>
-<rect x='112' y='328' width='288' height='24' rx='12'
-fill='%2338bdf8'/><rect x='132' y='292' width='24' height='96'
-rx='8' fill='%23ffffff'/><rect x='356' y='292' width='24'
-height='96' rx='8' fill='%23ffffff'/></svg>",
+72 L390 320 H320 L256 180 L192 320 H122 Z' fill='%2360a5fa'/>
+<rect x='132' y='280' width='248' height='20' rx='10'
+fill='%2338bdf8'/><rect x='148' y='250' width='20' height='80'
+rx='6' fill='%23ffffff'/><rect x='344' y='250' width='20'
+
+height='80' rx='6' fill='%23ffffff'/><text x='256' y='415' font-
+family='sans-serif' font-size='38' font-weight='800' letter-
+spacing='8' fill='%23f8fafc' text-
+anchor='middle'>APEXPULSE</text></svg>",
+
 "sizes": "512x512",
 "type": "image/svg+xml",
 "purpose": "any maskable"

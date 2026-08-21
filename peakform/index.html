@@ -1,37 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Peak Form - Workout & PR Tracker</title>
-  
+  <title>ApexPulse - Workout & PR Tracker</title>
   <meta name="theme-color" content="#0b0f19">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-
+web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Peak Form">
+  <meta name="apple-mobile-web-app-title" content="ApexPulse">
 
-  <!-- SVG Favicon with PEAKFORM Logo -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%230b0f19'/><path d='M256 72 L390 320 H320 L256 180 L192 320 H122 Z' fill='%2360a5fa'/><rect x='132' y='280' width='248' height='20' rx='10' fill='%2338bdf8'/><rect x='148' y='250' width='20' height='80' rx='6' fill='%23ffffff'/><rect x='344' y='250' width='20' height='80' rx='6' fill='%23ffffff'/><text x='256' y='415' font-family='sans-serif' font-size='42' font-weight='800' letter-spacing='10' fill='%23f8fafc' text-anchor='middle'>PEAKFORM</text></svg>">
+  <!-- SVG Favicon with APEXPULSE Logo -->
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%230b0f19'/><path d='M256 72 L390 320 H320 L256 180 L192 320 H122 Z' fill='%2360a5fa'/><rect x='132' y='280' width='248' height='20' rx='10' fill='%2338bdf8'/><rect x='148' y='250' width='20' height='80' rx='6' fill='%23ffffff'/><rect x='344' y='250' width='20' height='80' rx='6' fill='%23ffffff'/><text x='256' y='415' font-family='sans-serif' font-size='38' font-weight='800' letter-spacing='8' fill='%23f8fafc' text-anchor='middle'>APEXPULSE</text></svg>">
 
-  <!-- Apple iOS Home Screen Icon with PEAKFORM Logo -->
-  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%230b0f19'/><path d='M256 72 L390 320 H320 L256 180 L192 320 H122 Z' fill='%2360a5fa'/><rect x='132' y='280' width='248' height='20' rx='10' fill='%2338bdf8'/><rect x='148' y='250' width='20' height='80' rx='6' fill='%23ffffff'/><rect x='344' y='250' width='20' height='80' rx='6' fill='%23ffffff'/><text x='256' y='415' font-family='sans-serif' font-size='42' font-weight='800' letter-spacing='10' fill='%23f8fafc' text-anchor='middle'>PEAKFORM</text></svg>">
-
+  <!-- Apple iOS Home Screen Icon -->
+  <link rel="apple-touch-icon"
+    href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%230b0f19'/><path d='M256 72 L390 320 H320 L256 180 L192 320 H122 Z' fill='%2360a5fa'/><rect x='132' y='280' width='248' height='20' rx='10' fill='%2338bdf8'/><rect x='148' y='250' width='20' height='80' rx='6' fill='%23ffffff'/><rect x='344' y='250' width='20' height='80' rx='6' fill='%23ffffff'/><text x='256' y='415' font-family='sans-serif' font-size='38' font-weight='800' letter-spacing='8' fill='%23f8fafc' text-anchor='middle'>APEXPULSE</text></svg>">
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
 
+<body>
   <!-- Auth View -->
   <div id="auth-view" class="auth-container">
     <div style="margin-bottom: 16px;">
-      <svg width="96" height="96" viewBox="0 0 512 512" style="filter: drop-shadow(0 8px 16px rgba(96, 165, 250, 0.25));">
+      <svg width="96" height="96" viewBox="0 0 512 512" style="filter: drop-shadow(0 8px 16px rgba(96, 165, 250,
+0.25));">
         <defs>
           <linearGradient id="loginBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#0b0f19" />
@@ -39,67 +41,55 @@
           </linearGradient>
           <linearGradient id="loginPeakGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="#60a5fa" />
-            <stop offset="100%" stop-color="#a855f7" />
+            <stop offset="100%" stop- color="#a855f7" />
           </linearGradient>
           <linearGradient id="loginBarGrad" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stop-color="#38bdf8" />
-            <stop offset="100%" stop-color="#c084fc" />
+            <stop offset="100%" stop- color="#c084fc" />
           </linearGradient>
         </defs>
-
         <rect width="512" height="512" rx="112" fill="url(#loginBgGrad)" />
-        <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8" />
-
-        <path d="M256 72 L390 320 H320 L256 180 L192 320 H122 Z" fill="url(#loginPeakGrad)" />
-
+        <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="rgba(255,255,255,0.08)"
+          stroke-width="8" />
+        <path d="M256 72 L390 320 H320 L256
+180 L192 320 H122 Z" fill="url(#loginPeakGrad)" />
         <rect x="132" y="280" width="248" height="20" rx="10" fill="url(#loginBarGrad)" />
         <rect x="148" y="250" width="20" height="80" rx="6" fill="#f8fafc" />
         <rect x="344" y="250" width="20" height="80" rx="6" fill="#f8fafc" />
         <rect x="174" y="264" width="10" height="52" rx="3" fill="#94a3b8" />
-        <rect x="328" y="264" width="10" height="52" rx="3" fill="#94a3b8" />
-
-        <text x="256" y="415" 
-              font-family="'Plus Jakarta Sans', system-ui, sans-serif" 
-              font-size="42" 
-              font-weight="800" 
-              letter-spacing="10" 
-              fill="#f8fafc" 
-              text-anchor="middle">PEAKFORM</text>
+        <rect x="328" y="264" width="10" height="52" rx="3" fill="#94a3b8" /> <text x="256" y="415" font-family="'Plus Jakarta
+Sans', system-ui, sans-serif" font-size="38" font-weight="800" letter-spacing="8" fill="#f8fafc"
+          text-anchor="middle">APEXPULSE</text>
       </svg>
     </div>
-
-    <h1>Peak Form</h1>
-    <p>Sign in or create an account</p>
-    <form id="auth-form" class="glass-card">
-      <input type="text" id="username" placeholder="Username (required for Sign Up)">
-      <input type="email" id="email" placeholder="Email Address" required>
-      <input type="password" id="password" placeholder="Password" required>
-      <div class="auth-actions">
-        <button type="button" id="login-btn" class="btn-primary">Login</button>
-        <button type="button" id="signup-btn" class="btn-secondary">Sign Up</button>
-      </div>
+    <h1>ApexPulse</h1>
+    <p>Sign in or
+      create an account</p>
+    <form id="auth-form" class="glass-card"> <input type="text" id="username"
+        placeholder="Username (required for Sign Up)"> <input type="email" id="email" placeholder="Email Address"
+        required> <input type="password" id="password" placeholder="Password" required>
+      <div class="auth-actions"> <button type="button" id="login-
+btn" class="btn-primary">Login</button> <button type="button" id="signup-btn" class="btn-
+secondary">Sign Up</button> </div>
     </form>
-  </div>
-
-  <!-- Dashboard View -->
+  </div> <!-- Dashboard View -->
   <div id="app-view" class="hidden">
     <div class="app-header">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <svg width="32" height="32" viewBox="0 0 512 512" style="flex-shrink: 0;">
-          <rect width="512" height="512" rx="112" fill="#1e293b"/>
-          <path d="M256 72 L390 320 H320 L256 180 L192 320 H122 Z" fill="#60a5fa"/>
-          <rect x="132" y="280" width="248" height="20" rx="10" fill="#38bdf8"/>
-          <rect x="148" y="250" width="20" height="80" rx="6" fill="#ffffff"/>
-          <rect x="344" y="250" width="20" height="80" rx="6" fill="#ffffff"/>
+      <div style="display: flex; align-items: center; gap:
+10px;"> <svg width="32" height="32" viewBox="0 0 512 512" style="flex-shrink: 0;">
+          <rect width="512" height="512" rx="112" fill="#1e293b" />
+          <path d="M256 72 L390 320 H320 L256 180
+L192 320 H122 Z" fill="#60a5fa" />
+          <rect x="132" y="280" width="248" height="20" rx="10" fill="#38bdf8" />
+          <rect x="148" y="250" width="20" height="80" rx="6" fill="#ffffff" />
+          <rect x="356" y="250" width="20" height="80" rx="6" fill="#ffffff" />
         </svg>
         <div>
-          <h2>Peak Form</h2>
-          <span class="user-tag" id="user-display"></span>
+          <h2>ApexPulse</h2> <span class="user-tag" id="user-display"></span>
         </div>
       </div>
       <button class="logout-btn" id="logout-btn">Logout</button>
     </div>
-
     <!-- Navigation Tabs -->
     <div class="nav-tabs">
       <button class="tab-btn" id="tab-routine">Workout Routine</button>
@@ -110,7 +100,8 @@
     <!-- Landing View -->
     <div id="landing-view" class="empty-state" style="padding-top: 60px;">
       <p style="font-size: 1.1rem; color: #f8fafc; font-weight: 600; margin-bottom: 8px;">Welcome back!</p>
-      <p style="color: #64748b;">Select a tab above to view your workout schedule, track PRs, or view progress graphs.</p>
+      <p style="color: #64748b;">Select a tab above to view your workout schedule, track PRs, or view progress graphs.
+      </p>
     </div>
 
     <!-- Routine View -->
@@ -149,7 +140,10 @@
     </div>
 
     <button class="fab hidden" id="fab-add" title="Add">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
     </button>
   </div>
 
@@ -189,7 +183,7 @@
       <div class="modal-title">Add/Edit Routine Exercise</div>
       <form id="routine-form">
         <input type="hidden" id="routine-edit-idx">
-        
+
         <div class="input-with-btn">
           <input type="text" id="routine-ex-name" placeholder="Exercise Name" required>
           <button type="button" class="btn-secondary" id="open-library-btn" title="Browse Library">📋 Menu</button>
@@ -262,4 +256,5 @@
 
   <script src="script.js"></script>
 </body>
+
 </html>
