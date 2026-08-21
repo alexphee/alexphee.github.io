@@ -11,9 +11,8 @@ let selectedDayName = 'Monday';
 let chartInstance = null;
 let currentActiveTab = null;
 
-/// Enriched Default Exercise Library
+// Enriched Default Exercise Library
 const defaultLibrary = [
-  // Chest
   { exercise: "Barbell Bench Press", group_name: "Chest" },
   { exercise: "Incline DB Press", group_name: "Chest" },
   { exercise: "Flat DB Bench Press", group_name: "Chest" },
@@ -24,8 +23,6 @@ const defaultLibrary = [
   { exercise: "Machine Chest Press", group_name: "Chest" },
   { exercise: "Push Ups", group_name: "Chest" },
   { exercise: "Decline Bench Press", group_name: "Chest" },
-
-  // Back
   { exercise: "Pull Ups", group_name: "Back" },
   { exercise: "Lat Pulldown", group_name: "Back" },
   { exercise: "Barbell Bent Over Row", group_name: "Back" },
@@ -36,8 +33,6 @@ const defaultLibrary = [
   { exercise: "Chin Ups", group_name: "Back" },
   { exercise: "Face Pulls", group_name: "Back" },
   { exercise: "Straight Arm Pulldown", group_name: "Back" },
-
-  // Legs
   { exercise: "Barbell Back Squat", group_name: "Legs" },
   { exercise: "Romanian Deadlift (RDL)", group_name: "Legs" },
   { exercise: "Leg Press", group_name: "Legs" },
@@ -48,8 +43,6 @@ const defaultLibrary = [
   { exercise: "Standing Calf Raises", group_name: "Legs" },
   { exercise: "Seated Calf Raises", group_name: "Legs" },
   { exercise: "Goblet Squat", group_name: "Legs" },
-
-  // Shoulders
   { exercise: "Overhead Barbell Press", group_name: "Shoulders" },
   { exercise: "Seated DB Shoulder Press", group_name: "Shoulders" },
   { exercise: "Dumbbell Lateral Raises", group_name: "Shoulders" },
@@ -60,8 +53,6 @@ const defaultLibrary = [
   { exercise: "Front DB Raises", group_name: "Shoulders" },
   { exercise: "Barbell Shrugs", group_name: "Shoulders" },
   { exercise: "Upright Rows", group_name: "Shoulders" },
-
-  // Biceps
   { exercise: "Barbell Curl", group_name: "Biceps" },
   { exercise: "Dumbbell Bicep Curl", group_name: "Biceps" },
   { exercise: "Hammer Curls", group_name: "Biceps" },
@@ -71,8 +62,6 @@ const defaultLibrary = [
   { exercise: "Cable Bicep Curl", group_name: "Biceps" },
   { exercise: "Concentration Curls", group_name: "Biceps" },
   { exercise: "Spider Curls", group_name: "Biceps" },
-
-  // Triceps
   { exercise: "Tricep Rope Pushdown", group_name: "Triceps" },
   { exercise: "Skull Crushers", group_name: "Triceps" },
   { exercise: "Close Grip Bench Press", group_name: "Triceps" },
@@ -82,8 +71,6 @@ const defaultLibrary = [
   { exercise: "Parallel Bar Dips", group_name: "Triceps" },
   { exercise: "Single Arm Kickbacks", group_name: "Triceps" },
   { exercise: "Bench Dips", group_name: "Triceps" },
-
-  // Core
   { exercise: "Hanging Leg Raises", group_name: "Core" },
   { exercise: "Cable Woodchoppers", group_name: "Core" },
   { exercise: "Ab Wheel Rollouts", group_name: "Core" },
@@ -93,20 +80,14 @@ const defaultLibrary = [
   { exercise: "Heel Touches", group_name: "Core" },
   { exercise: "Decline Sit-Ups", group_name: "Core" },
   { exercise: "Cable Crunches", group_name: "Core" },
-
-  // Run
   { exercise: "Road Running", group_name: "Run" },
   { exercise: "Treadmill Run", group_name: "Run" },
   { exercise: "Track Intervals", group_name: "Run" },
   { exercise: "Tempo Run", group_name: "Run" },
   { exercise: "Sprint Intervals", group_name: "Run" },
-
-  // Walk
   { exercise: "Incline Treadmill Walk", group_name: "Walk" },
   { exercise: "Outdoor Power Walk", group_name: "Walk" },
   { exercise: "Weighted Vest Walk", group_name: "Walk" },
-
-  // Trail
   { exercise: "Trail Run", group_name: "Trail" },
   { exercise: "Mountain Hike", group_name: "Trail" },
   { exercise: "Ultra Trail Run", group_name: "Trail" }
@@ -247,7 +228,7 @@ signupBtn.addEventListener('click', async (e) => {
   });
 
   if (error) alert(error.message);
-  else alert('Account created! Check your email if confirmation is required.');
+  else alert('Account created! Please check your email if confirmation is required.');
 });
 
 logoutBtn.onclick = async () => { 
@@ -257,7 +238,6 @@ logoutBtn.onclick = async () => {
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
   if (session) {
     currentUser = session.user;
-    // Prefer custom metadata username, fallback to email prefix
     const customName = currentUser.user_metadata?.username || currentUser.email.split('@')[0];
     userDisplay.textContent = `@${customName}`;
     
