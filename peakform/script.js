@@ -705,6 +705,6 @@ function resetDashboardView() {
 
 // Service Worker for PWA
 if ('serviceWorker' in navigator) {
-  const swCode = `self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));`;
-  navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode], { type: 'text/javascript' })));
+  navigator.serviceWorker.register('sw.js')
+  .catch(err => console.log('ServiceWorker registration skipped:', err));
 }
