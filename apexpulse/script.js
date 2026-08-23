@@ -10,9 +10,9 @@ let localLibrary = [];
 let selectedDayName = 'Monday';
 let chartInstance = null;
 let currentActiveTab = null;
-let libraryTargetContext = 'routine'; // 'routine' or 'pr'
+let libraryTargetContext = 'routine';
 
-// Enriched Default Exercise Library
+// Default Exercise Library
 const defaultLibrary = [
   { exercise: "Barbell Bench Press", group_name: "Chest" },
   { exercise: "Incline DB Press", group_name: "Chest" },
@@ -104,59 +104,30 @@ const defaultRoutines = {
   Sunday: { title: "Workout Title", exercises: [] }
 };
 
-// String Similarity Helper (Levenshtein Distance)
-function getLevenshteinDistance(a, b) {
-  const matrix = [];
-  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
-
-function findBestExerciseSuggestion(input) {
+// Filter All Matching Exercises Starting With / Containing Input
+function getMatchingExerciseSuggestions(input) {
   const cleanInput = input.trim().toLowerCase();
-  if (cleanInput.length < 3) return null;
+  if (cleanInput.length < 2) return [];
 
-  let bestMatch = null;
-  let lowestDistance = Infinity;
+  // Prefix matches first, then general substring matches
+  const startsWithMatches = [];
+  const containsMatches = [];
 
   localLibrary.forEach(item => {
-    const exName = item.exercise;
-    const cleanEx = exName.toLowerCase();
+    const cleanEx = item.exercise.toLowerCase();
+    if (cleanEx === cleanInput) return; // Hide if exact match typed
 
-    if (cleanEx === cleanInput) return; // Exact match already
-
-    // Substring match priority
-    if (cleanEx.includes(cleanInput) || cleanInput.includes(cleanEx)) {
-      bestMatch = item;
-      lowestDistance = 0;
-      return;
-    }
-
-    const dist = getLevenshteinDistance(cleanInput, cleanEx);
-    if (dist < lowestDistance && dist <= 4) {
-      lowestDistance = dist;
-      bestMatch = item;
+    if (cleanEx.startsWith(cleanInput)) {
+      startsWithMatches.push(item);
+    } else if (cleanEx.includes(cleanInput)) {
+      containsMatches.push(item);
     }
   });
 
-  return bestMatch;
+  return [...startsWithMatches, ...containsMatches].slice(0, 6); // Max 6 results
 }
 
-// Ensure New Exercises Are Saved to User's Library
+// Ensure Exercise Exists in User's Library
 async function ensureExerciseInLibrary(exerciseName, groupName) {
   const exists = localLibrary.some(l => l.exercise.toLowerCase() === exerciseName.toLowerCase());
   if (!exists) {
@@ -227,31 +198,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Input Suggestion Event Listeners
   routineExName.addEventListener('input', () => {
-    handleSuggestionCheck(routineExName.value, routineSuggestionBox, (suggestedObj) => {
-      routineExName.value = suggestedObj.exercise;
-      document.getElementById('routine-ex-group').value = suggestedObj.group_name;
+    renderSuggestionList(routineExName.value, routineSuggestionBox, (selectedObj) => {
+      routineExName.value = selectedObj.exercise;
+      document.getElementById('routine-ex-group').value = selectedObj.group_name;
       routineSuggestionBox.classList.add('hidden');
     });
   });
 
   prExInput.addEventListener('input', () => {
-    handleSuggestionCheck(prExInput.value, prSuggestionBox, (suggestedObj) => {
-      prExInput.value = suggestedObj.exercise;
-      categorySelect.value = suggestedObj.group_name;
+    renderSuggestionList(prExInput.value, prSuggestionBox, (selectedObj) => {
+      prExInput.value = selectedObj.exercise;
+      categorySelect.value = selectedObj.group_name;
       updatePRModalLabels();
       prSuggestionBox.classList.add('hidden');
     });
   });
 
-  function handleSuggestionCheck(inputVal, suggestionBoxEl, onAccept) {
-    const match = findBestExerciseSuggestion(inputVal);
-    if (match) {
-      suggestionBoxEl.innerHTML = `<span>Did you mean <span class="match-name">${match.exercise}</span>?</span> <span>Tap to use ✓</span>`;
-      suggestionBoxEl.classList.remove('hidden');
-      suggestionBoxEl.onclick = () => onAccept(match);
-    } else {
-      suggestionBoxEl.classList.add('hidden');
+  function renderSuggestionList(inputVal, containerEl, onSelect) {
+    const matches = getMatchingExerciseSuggestions(inputVal);
+    
+    if (matches.length === 0) {
+      containerEl.classList.add('hidden');
+      containerEl.innerHTML = '';
+      return;
     }
+
+    containerEl.className = 'suggestion-list-container';
+    containerEl.innerHTML = matches.map(item => `
+      <div class="suggestion-item">
+        <span class="item-title">${item.exercise}</span>
+        <span class="item-group">${item.group_name}</span>
+      </div>
+    `).join('');
+
+    // Attach click handlers to rendered rows
+    const items = containerEl.querySelectorAll('.suggestion-item');
+    items.forEach((itemEl, idx) => {
+      itemEl.onclick = () => onSelect(matches[idx]);
+    });
+
+    containerEl.classList.remove('hidden');
   }
 
   // Open Library Accordion for PR or Routine
@@ -584,7 +570,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const rotation = document.getElementById('routine-ex-rotation').value.trim();
     const tips = document.getElementById('routine-ex-tips').value.trim();
 
-    // Ensure it exists in Library
     await ensureExerciseInLibrary(exercise, muscleGroup);
 
     const newObj = { exercise, muscleGroup, sets, reps, target, rotation, tips };
@@ -632,7 +617,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const reps = Math.max(0, parseFloat(repsInput.value) || 0);
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-    // Ensure it exists in Library
     await ensureExerciseInLibrary(exercise, category);
 
     if (id) {
