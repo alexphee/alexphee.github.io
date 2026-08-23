@@ -304,14 +304,32 @@ li {
 
 .empty-state { text-align: center; color: #64748b; padding: 48px 16px; font-size: 0.9rem; }
 
-/* Color-Coded Muscle Group Dots & Badges */
-.group-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
+/* Color-Coded Muscle Group Corner Badges */
+.group-square-badge {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
   display: inline-block;
   flex-shrink: 0;
   box-shadow: 0 0 8px currentColor;
+}
+
+/* Routine Card Bottom Bar Layout */
+.routine-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.routine-card-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #94a3b8;
 }
 
 /* Category Specific Glow Colors */

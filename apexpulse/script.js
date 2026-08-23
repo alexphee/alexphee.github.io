@@ -497,49 +497,107 @@ document.addEventListener('DOMContentLoaded', () => {
     renderRoutineDay(dayName);
   };
 
-  function renderRoutineDay(dayName) {
-    const dayData = localRoutines[dayName];
-    const titleEl = document.getElementById('routine-title');
-    const containerEl = document.getElementById('routine-container');
+// Inside script.js: Update renderRoutineDay function
+function renderRoutineDay(dayName) {
+  const dayData = localRoutines[dayName];
+  const titleEl = document.getElementById('routine-title');
+  const containerEl = document.getElementById('routine-container');
 
-    titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
-    containerEl.innerHTML = '';
+  titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
+  containerEl.innerHTML = '';
 
-    if (!dayData || !dayData.exercises.length) {
-      containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
-      return;
-    }
+  if (!dayData || !dayData.exercises.length) {
+    containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
+    return;
+  }
 
-    dayData.exercises.forEach((ex, idx) => {
-      const dotClass = getGroupDotClass(ex.muscleGroup);
+  dayData.exercises.forEach((ex, idx) => {
+    const dotClass = getGroupDotClass(ex.muscleGroup);
 
-      containerEl.innerHTML += `
-        <div class="routine-card">
-          <span class="routine-num">${idx + 1}.</span>
-          <div class="routine-card-content">
-            <div class="routine-card-header">
-              <span class="routine-card-title">${ex.exercise}</span>
-              <span class="badge">${ex.sets} sets × ${ex.reps}</span>
-            </div>
-            <div class="routine-card-meta" style="display: flex; align-items: center; gap: 6px;">
-              <span class="group-dot ${dotClass}"></span>
-              <span>Target: ${ex.target || 'General'} (${ex.muscleGroup || 'General'})</span>
-            </div>
-            ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
-            ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
+    containerEl.innerHTML += `
+      <div class="routine-card">
+        <span class="routine-num">${idx + 1}.</span>
+        <div class="routine-card-content">
+          <div class="routine-card-header">
+            <span class="routine-card-title">${ex.exercise}</span>
+            <span class="badge">${ex.sets} sets × ${ex.reps}</span>
           </div>
-          <div class="actions" style="flex-direction: column; align-items: center;">
-            <div class="reorder-actions">
-              <button class="btn-icon reorder-btn" onclick="moveRoutineExercise(${idx}, -1)">▲</button>
-              <button class="btn-icon reorder-btn" onclick="moveRoutineExercise(${idx}, 1)">▼</button>
+          ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
+          ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
+          
+          <!-- Bottom Corner Row -->
+          <div class="routine-card-footer">
+            <div class="routine-card-footer-left">
+              <span class="group-square-badge ${dotClass}"></span>
+              <span>${ex.muscleGroup || 'General'} ${ex.target ? '• ' + ex.target : ''}</span>
             </div>
-            <button class="btn-icon" style="width:24px; height:24px; margin-top: 4px;" onclick="openRoutineModal(${idx})">✎</button>
-            <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteRoutineExercise(${idx})">✕</button>
           </div>
         </div>
+        <div class="actions" style="flex-direction: column; align-items: center;">
+          <div class="reorder-actions">
+            <button class="btn-icon reorder-btn" onclick="moveRoutineExercise(${idx}, -1)">▲</button>
+            <button class="btn-icon reorder-btn" onclick="moveRoutineExercise(${idx}, 1)">▼</button>
+          </div>
+          <button class="btn-icon" style="width:24px; height:24px; margin-top: 4px;" onclick="openRoutineModal(${idx})">✎</button>
+          <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteRoutineExercise(${idx})">✕</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+// Inside script.js: Update renderPRs function
+function renderPRs() {
+  container.innerHTML = '';
+  const filterText = searchBar.value.toLowerCase().trim();
+  const prs = localPRs.filter(p => 
+    p.exercise.toLowerCase().includes(filterText) || 
+    p.category.toLowerCase().includes(filterText)
+  );
+
+  if (prs.length === 0) {
+    container.innerHTML = `<div class="empty-state">${filterText ? 'No matching exercises or categories.' : 'No PRs recorded yet. Tap + to add one!'}</div>`;
+    return;
+  }
+
+  const grouped = prs.reduce((acc, pr) => {
+    (acc[pr.category] = acc[pr.category] || []).push(pr);
+    return acc;
+  }, {});
+
+  for (const [category, items] of Object.entries(grouped)) {
+    const groupEl = document.createElement('div');
+    groupEl.innerHTML = `<div class="group-header">${category}</div>`;
+    const ul = document.createElement('ul');
+
+    items.forEach(pr => {
+      const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
+      const badgeText = isCardio ? `${pr.weight} km in ${pr.reps} min` : `${pr.weight} kg × ${pr.reps}`;
+      const dotClass = getGroupDotClass(pr.category);
+
+      ul.innerHTML += `
+        <li style="position: relative; padding-bottom: 24px;">
+          <strong class="pr-name">${pr.exercise}</strong>
+          <div class="pr-right-group">
+            <span class="badge">${badgeText}</span>
+            <div class="actions">
+              <button class="btn-icon" onclick="showPercentages(${pr.id})">%</button>
+              <button class="btn-icon" onclick="editPr(${pr.id})">✎</button>
+              <button class="btn-icon del" onclick="deletePr(${pr.id})">✕</button>
+            </div>
+          </div>
+          <!-- Bottom Left Square Badge -->
+          <div style="position: absolute; bottom: 8px; left: 14px; display: flex; align-items: center; gap: 6px;">
+            <span class="group-square-badge ${dotClass}"></span>
+            <span style="font-size: 0.72rem; color: #64748b; font-weight: 600; text-transform: uppercase;">${pr.category}</span>
+          </div>
+        </li>
       `;
     });
+    groupEl.appendChild(ul);
+    container.appendChild(groupEl);
   }
+}
 
   async function saveRoutineDayToSupabase(dayName) {
     const dayData = localRoutines[dayName];
@@ -732,54 +790,56 @@ document.addEventListener('DOMContentLoaded', () => {
   searchBar.oninput = () => renderPRs();
 
   function renderPRs() {
-    container.innerHTML = '';
-    const filterText = searchBar.value.toLowerCase().trim();
-    const prs = localPRs.filter(p => 
-      p.exercise.toLowerCase().includes(filterText) || 
-      p.category.toLowerCase().includes(filterText)
-    );
+  container.innerHTML = '';
+  const filterText = searchBar.value.toLowerCase().trim();
+  const prs = localPRs.filter(p => 
+    p.exercise.toLowerCase().includes(filterText) || 
+    p.category.toLowerCase().includes(filterText)
+  );
 
-    if (prs.length === 0) {
-      container.innerHTML = `<div class="empty-state">${filterText ? 'No matching exercises or categories.' : 'No PRs recorded yet. Tap + to add one!'}</div>`;
-      return;
-    }
-
-    const grouped = prs.reduce((acc, pr) => {
-      (acc[pr.category] = acc[pr.category] || []).push(pr);
-      return acc;
-    }, {});
-
-    for (const [category, items] of Object.entries(grouped)) {
-      const groupEl = document.createElement('div');
-      groupEl.innerHTML = `<div class="group-header">${category}</div>`;
-      const ul = document.createElement('ul');
-
-      items.forEach(pr => {
-        const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
-        const badgeText = isCardio ? `${pr.weight} km in ${pr.reps} min` : `${pr.weight} kg × ${pr.reps}`;
-        const dotClass = getGroupDotClass(pr.category);
-
-        ul.innerHTML += `
-          <li>
-            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-              <span class="group-dot ${dotClass}"></span>
-              <strong class="pr-name">${pr.exercise}</strong>
-            </div>
-            <div class="pr-right-group">
-              <span class="badge">${badgeText}</span>
-              <div class="actions">
-                <button class="btn-icon" onclick="showPercentages(${pr.id})">%</button>
-                <button class="btn-icon" onclick="editPr(${pr.id})">✎</button>
-                <button class="btn-icon del" onclick="deletePr(${pr.id})">✕</button>
-              </div>
-            </div>
-          </li>
-        `;
-      });
-      groupEl.appendChild(ul);
-      container.appendChild(groupEl);
-    }
+  if (prs.length === 0) {
+    container.innerHTML = `<div class="empty-state">${filterText ? 'No matching exercises or categories.' : 'No PRs recorded yet. Tap + to add one!'}</div>`;
+    return;
   }
+
+  const grouped = prs.reduce((acc, pr) => {
+    (acc[pr.category] = acc[pr.category] || []).push(pr);
+    return acc;
+  }, {});
+
+  for (const [category, items] of Object.entries(grouped)) {
+    const groupEl = document.createElement('div');
+    groupEl.innerHTML = `<div class="group-header">${category}</div>`;
+    const ul = document.createElement('ul');
+
+    items.forEach(pr => {
+      const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
+      const badgeText = isCardio ? `${pr.weight} km in ${pr.reps} min` : `${pr.weight} kg × ${pr.reps}`;
+      const dotClass = getGroupDotClass(pr.category);
+
+      ul.innerHTML += `
+        <li style="position: relative; padding-bottom: 24px;">
+          <strong class="pr-name">${pr.exercise}</strong>
+          <div class="pr-right-group">
+            <span class="badge">${badgeText}</span>
+            <div class="actions">
+              <button class="btn-icon" onclick="showPercentages(${pr.id})">%</button>
+              <button class="btn-icon" onclick="editPr(${pr.id})">✎</button>
+              <button class="btn-icon del" onclick="deletePr(${pr.id})">✕</button>
+            </div>
+          </div>
+          <!-- Bottom Left Square Badge -->
+          <div style="position: absolute; bottom: 8px; left: 14px; display: flex; align-items: center; gap: 6px;">
+            <span class="group-square-badge ${dotClass}"></span>
+            <span style="font-size: 0.72rem; color: #64748b; font-weight: 600; text-transform: uppercase;">${pr.category}</span>
+          </div>
+        </li>
+      `;
+    });
+    groupEl.appendChild(ul);
+    container.appendChild(groupEl);
+  }
+}
 
   function populateChartDropdown() {
     chartSelect.innerHTML = '<option value="" disabled selected>Select Exercise to View Graph</option>';
