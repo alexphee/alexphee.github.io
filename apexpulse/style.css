@@ -303,3 +303,26 @@ li {
 }
 
 .empty-state { text-align: center; color: #64748b; padding: 48px 16px; font-size: 0.9rem; }
+
+/* Color-Coded Muscle Group Dots & Badges */
+.group-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* Category Specific Glow Colors */
+.dot-chest { background-color: #ef4444; color: #ef4444; }
+.dot-back { background-color: #3b82f6; color: #3b82f6; }
+.dot-legs { background-color: #10b981; color: #10b981; }
+.dot-shoulders { background-color: #f59e0b; color: #f59e0b; }
+.dot-biceps { background-color: #a855f7; color: #a855f7; }
+.dot-triceps { background-color: #ec4899; color: #ec4899; }
+.dot-core { background-color: #06b6d4; color: #06b6d4; }
+.dot-run { background-color: #84cc16; color: #84cc16; }
+.dot-walk { background-color: #f97316; color: #f97316; }
+.dot-trail { background-color: #f43f5e; color: #f43f5e; }
+.dot-default { background-color: #94a3b8; color: #94a3b8; }

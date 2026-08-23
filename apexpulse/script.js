@@ -12,85 +12,104 @@ let chartInstance = null;
 let currentActiveTab = null;
 let libraryTargetContext = 'routine';
 
-// Default Exercise Library
+// Alphabetically Sorted Default Exercise Library per Muscle Group
 const defaultLibrary = [
+  // Chest
   { exercise: "Barbell Bench Press", group_name: "Chest" },
-  { exercise: "Incline DB Press", group_name: "Chest" },
-  { exercise: "Flat DB Bench Press", group_name: "Chest" },
-  { exercise: "Incline Barbell Press", group_name: "Chest" },
   { exercise: "Cable Fly", group_name: "Chest" },
   { exercise: "Chest Dips", group_name: "Chest" },
-  { exercise: "Pec Deck Fly", group_name: "Chest" },
-  { exercise: "Machine Chest Press", group_name: "Chest" },
-  { exercise: "Push Ups", group_name: "Chest" },
   { exercise: "Decline Bench Press", group_name: "Chest" },
-  { exercise: "Pull Ups", group_name: "Back" },
-  { exercise: "Lat Pulldown", group_name: "Back" },
+  { exercise: "Flat DB Bench Press", group_name: "Chest" },
+  { exercise: "Incline Barbell Press", group_name: "Chest" },
+  { exercise: "Incline DB Press", group_name: "Chest" },
+  { exercise: "Machine Chest Press", group_name: "Chest" },
+  { exercise: "Pec Deck Fly", group_name: "Chest" },
+  { exercise: "Push Ups", group_name: "Chest" },
+
+  // Back
   { exercise: "Barbell Bent Over Row", group_name: "Back" },
-  { exercise: "Seated Cable Row", group_name: "Back" },
-  { exercise: "Single Arm DB Row", group_name: "Back" },
-  { exercise: "T-Bar Row", group_name: "Back" },
   { exercise: "Chest Supported Row", group_name: "Back" },
   { exercise: "Chin Ups", group_name: "Back" },
   { exercise: "Face Pulls", group_name: "Back" },
+  { exercise: "Lat Pulldown", group_name: "Back" },
+  { exercise: "Pull Ups", group_name: "Back" },
+  { exercise: "Seated Cable Row", group_name: "Back" },
+  { exercise: "Single Arm DB Row", group_name: "Back" },
   { exercise: "Straight Arm Pulldown", group_name: "Back" },
+  { exercise: "T-Bar Row", group_name: "Back" },
+
+  // Legs
   { exercise: "Barbell Back Squat", group_name: "Legs" },
-  { exercise: "Romanian Deadlift (RDL)", group_name: "Legs" },
-  { exercise: "Leg Press", group_name: "Legs" },
   { exercise: "Bulgarian Split Squat", group_name: "Legs" },
+  { exercise: "Goblet Squat", group_name: "Legs" },
   { exercise: "Hack Squat", group_name: "Legs" },
   { exercise: "Leg Extensions", group_name: "Legs" },
+  { exercise: "Leg Press", group_name: "Legs" },
   { exercise: "Lying Leg Curls", group_name: "Legs" },
-  { exercise: "Standing Calf Raises", group_name: "Legs" },
+  { exercise: "Romanian Deadlift (RDL)", group_name: "Legs" },
   { exercise: "Seated Calf Raises", group_name: "Legs" },
-  { exercise: "Goblet Squat", group_name: "Legs" },
-  { exercise: "Overhead Barbell Press", group_name: "Shoulders" },
-  { exercise: "Seated DB Shoulder Press", group_name: "Shoulders" },
-  { exercise: "Dumbbell Lateral Raises", group_name: "Shoulders" },
-  { exercise: "Cable Lateral Raises", group_name: "Shoulders" },
+  { exercise: "Standing Calf Raises", group_name: "Legs" },
+
+  // Shoulders
   { exercise: "Arnold Press", group_name: "Shoulders" },
+  { exercise: "Barbell Shrugs", group_name: "Shoulders" },
+  { exercise: "Cable Lateral Raises", group_name: "Shoulders" },
+  { exercise: "Dumbbell Lateral Raises", group_name: "Shoulders" },
+  { exercise: "Front DB Raises", group_name: "Shoulders" },
+  { exercise: "Overhead Barbell Press", group_name: "Shoulders" },
   { exercise: "Rear Delt DB Flyes", group_name: "Shoulders" },
   { exercise: "Reverse Pec Deck", group_name: "Shoulders" },
-  { exercise: "Front DB Raises", group_name: "Shoulders" },
-  { exercise: "Barbell Shrugs", group_name: "Shoulders" },
+  { exercise: "Seated DB Shoulder Press", group_name: "Shoulders" },
   { exercise: "Upright Rows", group_name: "Shoulders" },
+
+  // Biceps
   { exercise: "Barbell Curl", group_name: "Biceps" },
-  { exercise: "Dumbbell Bicep Curl", group_name: "Biceps" },
-  { exercise: "Hammer Curls", group_name: "Biceps" },
-  { exercise: "Preacher Curl", group_name: "Biceps" },
-  { exercise: "Incline DB Curl", group_name: "Biceps" },
-  { exercise: "EZ Bar Curls", group_name: "Biceps" },
   { exercise: "Cable Bicep Curl", group_name: "Biceps" },
   { exercise: "Concentration Curls", group_name: "Biceps" },
+  { exercise: "Dumbbell Bicep Curl", group_name: "Biceps" },
+  { exercise: "EZ Bar Curls", group_name: "Biceps" },
+  { exercise: "Hammer Curls", group_name: "Biceps" },
+  { exercise: "Incline DB Curl", group_name: "Biceps" },
+  { exercise: "Preacher Curl", group_name: "Biceps" },
   { exercise: "Spider Curls", group_name: "Biceps" },
-  { exercise: "Tricep Rope Pushdown", group_name: "Triceps" },
-  { exercise: "Skull Crushers", group_name: "Triceps" },
-  { exercise: "Close Grip Bench Press", group_name: "Triceps" },
-  { exercise: "Tricep Overhead Extension", group_name: "Triceps" },
+
+  // Triceps
+  { exercise: "Bench Dips", group_name: "Triceps" },
   { exercise: "Cable French Press", group_name: "Triceps" },
-  { exercise: "Straight Bar Pushdown", group_name: "Triceps" },
+  { exercise: "Close Grip Bench Press", group_name: "Triceps" },
   { exercise: "Parallel Bar Dips", group_name: "Triceps" },
   { exercise: "Single Arm Kickbacks", group_name: "Triceps" },
-  { exercise: "Bench Dips", group_name: "Triceps" },
-  { exercise: "Hanging Leg Raises", group_name: "Core" },
-  { exercise: "Cable Woodchoppers", group_name: "Core" },
+  { exercise: "Skull Crushers", group_name: "Triceps" },
+  { exercise: "Straight Bar Pushdown", group_name: "Triceps" },
+  { exercise: "Tricep Overhead Extension", group_name: "Triceps" },
+  { exercise: "Tricep Rope Pushdown", group_name: "Triceps" },
+
+  // Core
   { exercise: "Ab Wheel Rollouts", group_name: "Core" },
+  { exercise: "Cable Crunches", group_name: "Core" },
+  { exercise: "Cable Woodchoppers", group_name: "Core" },
   { exercise: "Crunches", group_name: "Core" },
+  { exercise: "Decline Sit-Ups", group_name: "Core" },
+  { exercise: "Hanging Leg Raises", group_name: "Core" },
+  { exercise: "Heel Touches", group_name: "Core" },
   { exercise: "Plank", group_name: "Core" },
   { exercise: "Russian Twists", group_name: "Core" },
-  { exercise: "Heel Touches", group_name: "Core" },
-  { exercise: "Decline Sit-Ups", group_name: "Core" },
-  { exercise: "Cable Crunches", group_name: "Core" },
+
+  // Run
   { exercise: "Road Running", group_name: "Run" },
-  { exercise: "Treadmill Run", group_name: "Run" },
-  { exercise: "Track Intervals", group_name: "Run" },
-  { exercise: "Tempo Run", group_name: "Run" },
   { exercise: "Sprint Intervals", group_name: "Run" },
+  { exercise: "Tempo Run", group_name: "Run" },
+  { exercise: "Track Intervals", group_name: "Run" },
+  { exercise: "Treadmill Run", group_name: "Run" },
+
+  // Walk
   { exercise: "Incline Treadmill Walk", group_name: "Walk" },
   { exercise: "Outdoor Power Walk", group_name: "Walk" },
   { exercise: "Weighted Vest Walk", group_name: "Walk" },
-  { exercise: "Trail Run", group_name: "Trail" },
+
+  // Trail
   { exercise: "Mountain Hike", group_name: "Trail" },
+  { exercise: "Trail Run", group_name: "Trail" },
   { exercise: "Ultra Trail Run", group_name: "Trail" }
 ];
 
@@ -103,6 +122,25 @@ const defaultRoutines = {
   Saturday: { title: "Workout Title", exercises: [] },
   Sunday: { title: "Workout Title", exercises: [] }
 };
+
+// Returns CSS Dot Class based on Muscle Group
+function getGroupDotClass(groupName) {
+  if (!groupName) return 'dot-default';
+  const clean = groupName.toLowerCase().trim();
+  switch (clean) {
+    case 'chest': return 'dot-chest';
+    case 'back': return 'dot-back';
+    case 'legs': return 'dot-legs';
+    case 'shoulders': return 'dot-shoulders';
+    case 'biceps': return 'dot-biceps';
+    case 'triceps': return 'dot-triceps';
+    case 'core': return 'dot-core';
+    case 'run': return 'dot-run';
+    case 'walk': return 'dot-walk';
+    case 'trail': return 'dot-trail';
+    default: return 'dot-default';
+  }
+}
 
 // Filter All Matching Exercises Starting With / Containing Input
 function getMatchingExerciseSuggestions(input) {
@@ -404,7 +442,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const groups = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps", "Core", "Run", "Walk", "Trail"];
 
     groups.forEach(groupName => {
-      const items = localLibrary.filter(item => item.group_name === groupName);
+      // Sort library items inside each group alphabetically
+      const items = localLibrary
+        .filter(item => item.group_name === groupName)
+        .sort((a, b) => a.exercise.localeCompare(b.exercise));
+
       if (items.length === 0) return;
 
       const groupDiv = document.createElement('div');
@@ -469,6 +511,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     dayData.exercises.forEach((ex, idx) => {
+      const dotClass = getGroupDotClass(ex.muscleGroup);
+
       containerEl.innerHTML += `
         <div class="routine-card">
           <span class="routine-num">${idx + 1}.</span>
@@ -477,7 +521,10 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="routine-card-title">${ex.exercise}</span>
               <span class="badge">${ex.sets} sets × ${ex.reps}</span>
             </div>
-            <div class="routine-card-meta">Target: ${ex.target || 'General'} (${ex.muscleGroup || 'General'})</div>
+            <div class="routine-card-meta" style="display: flex; align-items: center; gap: 6px;">
+              <span class="group-dot ${dotClass}"></span>
+              <span>Target: ${ex.target || 'General'} (${ex.muscleGroup || 'General'})</span>
+            </div>
             ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
             ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
           </div>
@@ -538,7 +585,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   dayTitleCancelBtn.onclick = () => dayTitleModal.classList.add('hidden');
 
-  // Explicitly exposed window function for edit button
   window.openRoutineModal = function(editIdx = null) {
     routineForm.reset();
     routineSuggestionBox.classList.add('hidden');
@@ -711,10 +757,14 @@ document.addEventListener('DOMContentLoaded', () => {
       items.forEach(pr => {
         const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
         const badgeText = isCardio ? `${pr.weight} km in ${pr.reps} min` : `${pr.weight} kg × ${pr.reps}`;
+        const dotClass = getGroupDotClass(pr.category);
 
         ul.innerHTML += `
           <li>
-            <strong class="pr-name">${pr.exercise}</strong>
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+              <span class="group-dot ${dotClass}"></span>
+              <strong class="pr-name">${pr.exercise}</strong>
+            </div>
             <div class="pr-right-group">
               <span class="badge">${badgeText}</span>
               <div class="actions">
