@@ -10,6 +10,7 @@ let localLibrary = [];
 let selectedDayName = 'Monday';
 let chartInstance = null;
 let currentActiveTab = null;
+let libraryTargetContext = 'routine'; // 'routine' or 'pr'
 
 // Enriched Default Exercise Library
 const defaultLibrary = [
@@ -103,7 +104,75 @@ const defaultRoutines = {
   Sunday: { title: "Workout Title", exercises: [] }
 };
 
-// Safe DOM initialization
+// String Similarity Helper (Levenshtein Distance)
+function getLevenshteinDistance(a, b) {
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function findBestExerciseSuggestion(input) {
+  const cleanInput = input.trim().toLowerCase();
+  if (cleanInput.length < 3) return null;
+
+  let bestMatch = null;
+  let lowestDistance = Infinity;
+
+  localLibrary.forEach(item => {
+    const exName = item.exercise;
+    const cleanEx = exName.toLowerCase();
+
+    if (cleanEx === cleanInput) return; // Exact match already
+
+    // Substring match priority
+    if (cleanEx.includes(cleanInput) || cleanInput.includes(cleanEx)) {
+      bestMatch = item;
+      lowestDistance = 0;
+      return;
+    }
+
+    const dist = getLevenshteinDistance(cleanInput, cleanEx);
+    if (dist < lowestDistance && dist <= 4) {
+      lowestDistance = dist;
+      bestMatch = item;
+    }
+  });
+
+  return bestMatch;
+}
+
+// Ensure New Exercises Are Saved to User's Library
+async function ensureExerciseInLibrary(exerciseName, groupName) {
+  const exists = localLibrary.some(l => l.exercise.toLowerCase() === exerciseName.toLowerCase());
+  if (!exists) {
+    const { data } = await supabaseClient
+      .from('library')
+      .insert([{ user_id: currentUser.id, exercise: exerciseName, group_name: groupName }])
+      .select();
+      
+    if (data && data.length) {
+      localLibrary.push(data[0]);
+    } else {
+      localLibrary.push({ exercise: exerciseName, group_name: groupName });
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const authView = document.getElementById('auth-view');
   const appView = document.getElementById('app-view');
@@ -127,6 +196,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const prModal = document.getElementById('pr-modal');
   const prForm = document.getElementById('pr-form');
+  const prExInput = document.getElementById('exercise');
+  const prSuggestionBox = document.getElementById('pr-suggestion-box');
   const cancelBtn = document.getElementById('cancel-btn');
   const modalTitle = document.getElementById('modal-title');
   const categorySelect = document.getElementById('category');
@@ -137,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const routineForm = document.getElementById('routine-form');
   const routineCancelBtn = document.getElementById('routine-cancel-btn');
   const routineExName = document.getElementById('routine-ex-name');
-  const openLibraryBtn = document.getElementById('open-library-btn');
+  const routineSuggestionBox = document.getElementById('routine-suggestion-box');
 
   const libraryModal = document.getElementById('library-modal');
   const libraryAccordion = document.getElementById('library-accordion');
@@ -153,6 +224,45 @@ document.addEventListener('DOMContentLoaded', () => {
   const oneRmBox = document.getElementById('one-rm-box');
   const percentColumns = document.getElementById('percent-columns');
   const percentCloseBtn = document.getElementById('percent-close-btn');
+
+  // Input Suggestion Event Listeners
+  routineExName.addEventListener('input', () => {
+    handleSuggestionCheck(routineExName.value, routineSuggestionBox, (suggestedObj) => {
+      routineExName.value = suggestedObj.exercise;
+      document.getElementById('routine-ex-group').value = suggestedObj.group_name;
+      routineSuggestionBox.classList.add('hidden');
+    });
+  });
+
+  prExInput.addEventListener('input', () => {
+    handleSuggestionCheck(prExInput.value, prSuggestionBox, (suggestedObj) => {
+      prExInput.value = suggestedObj.exercise;
+      categorySelect.value = suggestedObj.group_name;
+      updatePRModalLabels();
+      prSuggestionBox.classList.add('hidden');
+    });
+  });
+
+  function handleSuggestionCheck(inputVal, suggestionBoxEl, onAccept) {
+    const match = findBestExerciseSuggestion(inputVal);
+    if (match) {
+      suggestionBoxEl.innerHTML = `<span>Did you mean <span class="match-name">${match.exercise}</span>?</span> <span>Tap to use ✓</span>`;
+      suggestionBoxEl.classList.remove('hidden');
+      suggestionBoxEl.onclick = () => onAccept(match);
+    } else {
+      suggestionBoxEl.classList.add('hidden');
+    }
+  }
+
+  // Open Library Accordion for PR or Routine
+  document.querySelectorAll('.open-lib-trigger').forEach(btn => {
+    btn.onclick = (e) => {
+      const isPR = e.target.closest('#pr-modal') !== null;
+      libraryTargetContext = isPR ? 'pr' : 'routine';
+      renderLibraryAccordion();
+      libraryModal.classList.remove('hidden');
+    };
+  });
 
   categorySelect.onchange = () => updatePRModalLabels();
 
@@ -303,11 +413,6 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('prs_users', JSON.stringify(usersLS));
   }
 
-  openLibraryBtn.onclick = () => {
-    renderLibraryAccordion();
-    libraryModal.classList.remove('hidden');
-  };
-
   libraryCloseBtn.onclick = () => libraryModal.classList.add('hidden');
 
   function renderLibraryAccordion() {
@@ -333,8 +438,14 @@ document.addEventListener('DOMContentLoaded', () => {
         itemDiv.className = 'accordion-item';
         itemDiv.textContent = item.exercise;
         itemDiv.onclick = () => {
-          routineExName.value = item.exercise;
-          document.getElementById('routine-ex-group').value = item.group_name;
+          if (libraryTargetContext === 'pr') {
+            prExInput.value = item.exercise;
+            categorySelect.value = item.group_name;
+            updatePRModalLabels();
+          } else {
+            routineExName.value = item.exercise;
+            document.getElementById('routine-ex-group').value = item.group_name;
+          }
           libraryModal.classList.add('hidden');
         };
         contentDiv.appendChild(itemDiv);
@@ -445,6 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openRoutineModal(editIdx = null) {
     routineForm.reset();
+    routineSuggestionBox.classList.add('hidden');
     document.getElementById('routine-edit-idx').value = editIdx !== null ? editIdx : '';
 
     if (editIdx !== null) {
@@ -472,11 +584,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const rotation = document.getElementById('routine-ex-rotation').value.trim();
     const tips = document.getElementById('routine-ex-tips').value.trim();
 
-    const existsInLib = localLibrary.some(l => l.exercise.toLowerCase() === exercise.toLowerCase());
-    if (!existsInLib) {
-      const { data } = await supabaseClient.from('library').insert([{ user_id: currentUser.id, exercise, group_name: muscleGroup }]).select();
-      if (data && data.length) localLibrary.push(data[0]);
-    }
+    // Ensure it exists in Library
+    await ensureExerciseInLibrary(exercise, muscleGroup);
 
     const newObj = { exercise, muscleGroup, sets, reps, target, rotation, tips };
 
@@ -492,10 +601,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openModal(pr = null) {
     prForm.reset();
+    prSuggestionBox.classList.add('hidden');
+
     if (pr) {
       modalTitle.textContent = 'Edit PR';
       document.getElementById('edit-id').value = pr.id;
-      document.getElementById('exercise').value = pr.exercise;
+      prExInput.value = pr.exercise;
       categorySelect.value = pr.category;
       updatePRModalLabels();
       weightInput.value = pr.weight;
@@ -515,11 +626,14 @@ document.addEventListener('DOMContentLoaded', () => {
   prForm.onsubmit = async (e) => {
     e.preventDefault();
     const id = document.getElementById('edit-id').value;
-    const exercise = document.getElementById('exercise').value.trim();
+    const exercise = prExInput.value.trim();
     const category = categorySelect.value;
     const weight = Math.max(0, parseFloat(weightInput.value) || 0);
     const reps = Math.max(0, parseFloat(repsInput.value) || 0);
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    // Ensure it exists in Library
+    await ensureExerciseInLibrary(exercise, category);
 
     if (id) {
       const existing = localPRs.find(p => p.id == id);

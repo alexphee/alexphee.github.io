@@ -190,6 +190,33 @@ li {
 .input-with-btn input { margin-bottom: 0; flex: 1; }
 .input-with-btn button { flex-shrink: 0; padding: 0 12px; }
 
+/* Smart Suggestion Tooltip */
+.suggestion-tooltip {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.9) 0%, rgba(88, 28, 135, 0.9) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  margin-top: -6px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+.suggestion-tooltip:hover {
+  transform: translateY(-1px);
+  border-color: #38bdf8;
+}
+.suggestion-tooltip span.match-name {
+  color: #38bdf8;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 /* Accordion Menu */
 .accordion-group { margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden; }
 .accordion-header {
