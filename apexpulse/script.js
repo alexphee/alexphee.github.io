@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   fabAdd.onclick = () => {
-    if (currentActiveTab === 'routine') openRoutineModal();
+    if (currentActiveTab === 'routine') window.openRoutineModal();
     else if (currentActiveTab === 'records') openModal();
   };
 
@@ -538,7 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   dayTitleCancelBtn.onclick = () => dayTitleModal.classList.add('hidden');
 
-  // Globals for editing routine exercises
+  // Explicitly exposed window function for edit button
   window.openRoutineModal = function(editIdx = null) {
     routineForm.reset();
     routineSuggestionBox.classList.add('hidden');
