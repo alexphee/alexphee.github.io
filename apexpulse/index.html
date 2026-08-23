@@ -76,7 +76,12 @@
           <span class="user-tag" id="user-display"></span>
         </div>
       </div>
-      <button class="logout-btn" id="logout-btn">Logout</button>
+      
+      <!-- Right Side Header Column with Version and Logout -->
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+        <span class="version-badge">ver 1.1.0</span>
+        <button class="logout-btn" id="logout-btn">Logout</button>
+      </div>
     </div>
 
     <!-- Navigation Tabs -->
@@ -87,9 +92,12 @@
     </div>
 
     <!-- Landing View -->
-    <div id="landing-view" class="empty-state" style="padding-top: 60px;">
-      <p style="font-size: 1.1rem; color: #f8fafc; font-weight: 600; margin-bottom: 8px;">Welcome back!</p>
-      <p style="color: #64748b;">Select a tab above to view your workout schedule, track PRs, or view progress graphs.</p>
+    <div id="landing-view" class="empty-state" style="padding-top: 60px; min-height: 60vh; display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <p style="font-size: 1.1rem; color: #f8fafc; font-weight: 600; margin-bottom: 8px;">Welcome back!</p>
+        <p style="color: #64748b;">Select a tab above to view your workout schedule, track PRs, or view progress graphs.</p>
+      </div>
+      <p class="creator-credit">Created by Alex Filippas</p>
     </div>
 
     <!-- Routine View -->
@@ -144,7 +152,6 @@
           <button type="button" class="btn-secondary open-lib-trigger" title="Browse Library">📋 Menu</button>
         </div>
         
-        <!-- Smart Suggestion Box -->
         <div id="pr-suggestion-box" class="suggestion-tooltip hidden"></div>
 
         <select id="category" required>
@@ -182,7 +189,6 @@
           <button type="button" class="btn-secondary open-lib-trigger" title="Browse Library">📋 Menu</button>
         </div>
 
-        <!-- Smart Suggestion Box -->
         <div id="routine-suggestion-box" class="suggestion-tooltip hidden"></div>
 
         <select id="routine-ex-group" required>

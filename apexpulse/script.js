@@ -11,6 +11,7 @@ let selectedDayName = 'Monday';
 let chartInstance = null;
 let currentActiveTab = null;
 let libraryTargetContext = 'routine';
+let draggedCardIndex = null;
 
 // Alphabetically Sorted Default Exercise Library per Muscle Group
 const defaultLibrary = [
@@ -300,6 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function switchTab(tab) {
     currentActiveTab = tab;
+    localStorage.setItem('apex_active_tab', tab); // Persist state across visits
     landingView.classList.add('hidden');
 
     tabRoutine.classList.toggle('active', tab === 'routine');
@@ -363,6 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (logoutBtn) {
     logoutBtn.onclick = async () => { 
+      localStorage.removeItem('apex_active_tab'); // Clear tab preference on logout
       await supabaseClient.auth.signOut(); 
     };
   }
@@ -378,7 +381,14 @@ document.addEventListener('DOMContentLoaded', () => {
       
       await autoMigrateLocalStorage();
       await fetchAllUserData();
-      resetDashboardView();
+
+      // Check if user has a previously active tab saved
+      const savedTab = localStorage.getItem('apex_active_tab');
+      if (savedTab && ['routine', 'records', 'chart'].includes(savedTab)) {
+        switchTab(savedTab);
+      } else {
+        resetDashboardView();
+      }
     } else {
       currentUser = null;
       authView.classList.remove('hidden');
@@ -442,7 +452,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const groups = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps", "Core", "Run", "Walk", "Trail"];
 
     groups.forEach(groupName => {
-      // Sort library items inside each group alphabetically
       const items = localLibrary
         .filter(item => item.group_name === groupName)
         .sort((a, b) => a.exercise.localeCompare(b.exercise));
@@ -497,25 +506,29 @@ document.addEventListener('DOMContentLoaded', () => {
     renderRoutineDay(dayName);
   };
 
-// Inside script.js: Update renderRoutineDay function
-function renderRoutineDay(dayName) {
-  const dayData = localRoutines[dayName];
-  const titleEl = document.getElementById('routine-title');
-  const containerEl = document.getElementById('routine-container');
+  function renderRoutineDay(dayName) {
+    const dayData = localRoutines[dayName];
+    const titleEl = document.getElementById('routine-title');
+    const containerEl = document.getElementById('routine-container');
 
-  titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
-  containerEl.innerHTML = '';
+    titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
+    containerEl.innerHTML = '';
 
-  if (!dayData || !dayData.exercises.length) {
-    containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
-    return;
-  }
+    if (!dayData || !dayData.exercises.length) {
+      containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
+      return;
+    }
 
-  dayData.exercises.forEach((ex, idx) => {
-    const dotClass = getGroupDotClass(ex.muscleGroup);
+    dayData.exercises.forEach((ex, idx) => {
+      const dotClass = getGroupDotClass(ex.muscleGroup);
 
-    containerEl.innerHTML += `
-      <div class="routine-card">
+      const card = document.createElement('div');
+      card.className = 'routine-card';
+      card.draggable = true;
+      card.dataset.index = idx;
+
+      card.innerHTML = `
+        <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
         <span class="routine-num">${idx + 1}.</span>
         <div class="routine-card-content">
           <div class="routine-card-header">
@@ -525,7 +538,6 @@ function renderRoutineDay(dayName) {
           ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
           ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
           
-          <!-- Bottom Corner Row -->
           <div class="routine-card-footer">
             <div class="routine-card-footer-left">
               <span class="group-square-badge ${dotClass}"></span>
@@ -533,71 +545,44 @@ function renderRoutineDay(dayName) {
             </div>
           </div>
         </div>
-        <div class="actions" style="flex-direction: column; align-items: center;">
-          <div class="reorder-actions">
-            <button class="btn-icon reorder-btn" onclick="moveRoutineExercise(${idx}, -1)">▲</button>
-            <button class="btn-icon reorder-btn" onclick="moveRoutineExercise(${idx}, 1)">▼</button>
-          </div>
-          <button class="btn-icon" style="width:24px; height:24px; margin-top: 4px;" onclick="openRoutineModal(${idx})">✎</button>
+        <div class="actions" style="flex-direction: column; align-items: center; justify-content: center;">
+          <button class="btn-icon" style="width:24px; height:24px; margin-bottom: 4px;" onclick="openRoutineModal(${idx})">✎</button>
           <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteRoutineExercise(${idx})">✕</button>
         </div>
-      </div>
-    `;
-  });
-}
-
-// Inside script.js: Update renderPRs function
-function renderPRs() {
-  container.innerHTML = '';
-  const filterText = searchBar.value.toLowerCase().trim();
-  const prs = localPRs.filter(p => 
-    p.exercise.toLowerCase().includes(filterText) || 
-    p.category.toLowerCase().includes(filterText)
-  );
-
-  if (prs.length === 0) {
-    container.innerHTML = `<div class="empty-state">${filterText ? 'No matching exercises or categories.' : 'No PRs recorded yet. Tap + to add one!'}</div>`;
-    return;
-  }
-
-  const grouped = prs.reduce((acc, pr) => {
-    (acc[pr.category] = acc[pr.category] || []).push(pr);
-    return acc;
-  }, {});
-
-  for (const [category, items] of Object.entries(grouped)) {
-    const groupEl = document.createElement('div');
-    groupEl.innerHTML = `<div class="group-header">${category}</div>`;
-    const ul = document.createElement('ul');
-
-    items.forEach(pr => {
-      const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
-      const badgeText = isCardio ? `${pr.weight} km in ${pr.reps} min` : `${pr.weight} kg × ${pr.reps}`;
-      const dotClass = getGroupDotClass(pr.category);
-
-      ul.innerHTML += `
-        <li style="position: relative; padding-bottom: 24px;">
-          <strong class="pr-name">${pr.exercise}</strong>
-          <div class="pr-right-group">
-            <span class="badge">${badgeText}</span>
-            <div class="actions">
-              <button class="btn-icon" onclick="showPercentages(${pr.id})">%</button>
-              <button class="btn-icon" onclick="editPr(${pr.id})">✎</button>
-              <button class="btn-icon del" onclick="deletePr(${pr.id})">✕</button>
-            </div>
-          </div>
-          <!-- Bottom Left Square Badge -->
-          <div style="position: absolute; bottom: 8px; left: 14px; display: flex; align-items: center; gap: 6px;">
-            <span class="group-square-badge ${dotClass}"></span>
-            <span style="font-size: 0.72rem; color: #64748b; font-weight: 600; text-transform: uppercase;">${pr.category}</span>
-          </div>
-        </li>
       `;
+
+      // HTML5 Drag and Drop Handlers
+      card.addEventListener('dragstart', (e) => {
+        draggedCardIndex = idx;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        draggedCardIndex = null;
+      });
+
+      card.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
+
+      card.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        if (draggedCardIndex === null || draggedCardIndex === idx) return;
+
+        const list = localRoutines[selectedDayName].exercises;
+        const movedItem = list.splice(draggedCardIndex, 1)[0];
+        list.splice(idx, 0, movedItem);
+
+        await saveRoutineDayToSupabase(selectedDayName);
+        renderRoutineDay(selectedDayName);
+      });
+
+      containerEl.appendChild(card);
     });
-    groupEl.appendChild(ul);
-    container.appendChild(groupEl);
   }
-}
 
   async function saveRoutineDayToSupabase(dayName) {
     const dayData = localRoutines[dayName];
@@ -608,19 +593,6 @@ function renderPRs() {
       exercises: dayData.exercises
     }], { onConflict: 'user_id, day_name' });
   }
-
-  window.moveRoutineExercise = async (idx, direction) => {
-    const list = localRoutines[selectedDayName].exercises;
-    const targetIdx = idx + direction;
-    if (targetIdx < 0 || targetIdx >= list.length) return;
-
-    const temp = list[idx];
-    list[idx] = list[targetIdx];
-    list[targetIdx] = temp;
-
-    await saveRoutineDayToSupabase(selectedDayName);
-    renderRoutineDay(selectedDayName);
-  };
 
   window.deleteRoutineExercise = async (idx) => {
     localRoutines[selectedDayName].exercises.splice(idx, 1);
@@ -790,56 +762,55 @@ function renderPRs() {
   searchBar.oninput = () => renderPRs();
 
   function renderPRs() {
-  container.innerHTML = '';
-  const filterText = searchBar.value.toLowerCase().trim();
-  const prs = localPRs.filter(p => 
-    p.exercise.toLowerCase().includes(filterText) || 
-    p.category.toLowerCase().includes(filterText)
-  );
+    container.innerHTML = '';
+    const filterText = searchBar.value.toLowerCase().trim();
+    const prs = localPRs.filter(p => 
+      p.exercise.toLowerCase().includes(filterText) || 
+      p.category.toLowerCase().includes(filterText)
+    );
 
-  if (prs.length === 0) {
-    container.innerHTML = `<div class="empty-state">${filterText ? 'No matching exercises or categories.' : 'No PRs recorded yet. Tap + to add one!'}</div>`;
-    return;
-  }
+    if (prs.length === 0) {
+      container.innerHTML = `<div class="empty-state">${filterText ? 'No matching exercises or categories.' : 'No PRs recorded yet. Tap + to add one!'}</div>`;
+      return;
+    }
 
-  const grouped = prs.reduce((acc, pr) => {
-    (acc[pr.category] = acc[pr.category] || []).push(pr);
-    return acc;
-  }, {});
+    const grouped = prs.reduce((acc, pr) => {
+      (acc[pr.category] = acc[pr.category] || []).push(pr);
+      return acc;
+    }, {});
 
-  for (const [category, items] of Object.entries(grouped)) {
-    const groupEl = document.createElement('div');
-    groupEl.innerHTML = `<div class="group-header">${category}</div>`;
-    const ul = document.createElement('ul');
+    for (const [category, items] of Object.entries(grouped)) {
+      const groupEl = document.createElement('div');
+      groupEl.innerHTML = `<div class="group-header">${category}</div>`;
+      const ul = document.createElement('ul');
 
-    items.forEach(pr => {
-      const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
-      const badgeText = isCardio ? `${pr.weight} km in ${pr.reps} min` : `${pr.weight} kg × ${pr.reps}`;
-      const dotClass = getGroupDotClass(pr.category);
+      items.forEach(pr => {
+        const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
+        const badgeText = isCardio ? `${pr.weight} km in ${pr.reps} min` : `${pr.weight} kg × ${pr.reps}`;
+        const dotClass = getGroupDotClass(pr.category);
 
-      ul.innerHTML += `
-        <li style="position: relative; padding-bottom: 24px;">
-          <strong class="pr-name">${pr.exercise}</strong>
-          <div class="pr-right-group">
-            <span class="badge">${badgeText}</span>
-            <div class="actions">
-              <button class="btn-icon" onclick="showPercentages(${pr.id})">%</button>
-              <button class="btn-icon" onclick="editPr(${pr.id})">✎</button>
-              <button class="btn-icon del" onclick="deletePr(${pr.id})">✕</button>
+        ul.innerHTML += `
+          <li style="position: relative; padding-bottom: 24px;">
+            <strong class="pr-name">${pr.exercise}</strong>
+            <div class="pr-right-group">
+              <span class="badge">${badgeText}</span>
+              <div class="actions">
+                <button class="btn-icon" onclick="showPercentages(${pr.id})">%</button>
+                <button class="btn-icon" onclick="editPr(${pr.id})">✎</button>
+                <button class="btn-icon del" onclick="deletePr(${pr.id})">✕</button>
+              </div>
             </div>
-          </div>
-          <!-- Bottom Left Square Badge -->
-          <div style="position: absolute; bottom: 8px; left: 14px; display: flex; align-items: center; gap: 6px;">
-            <span class="group-square-badge ${dotClass}"></span>
-            <span style="font-size: 0.72rem; color: #64748b; font-weight: 600; text-transform: uppercase;">${pr.category}</span>
-          </div>
-        </li>
-      `;
-    });
-    groupEl.appendChild(ul);
-    container.appendChild(groupEl);
+            <div style="position: absolute; bottom: 8px; left: 14px; display: flex; align-items: center; gap: 6px;">
+              <span class="group-square-badge ${dotClass}"></span>
+              <span style="font-size: 0.72rem; color: #64748b; font-weight: 600; text-transform: uppercase;">${pr.category}</span>
+            </div>
+          </li>
+        `;
+      });
+      groupEl.appendChild(ul);
+      container.appendChild(groupEl);
+    }
   }
-}
 
   function populateChartDropdown() {
     chartSelect.innerHTML = '<option value="" disabled selected>Select Exercise to View Graph</option>';

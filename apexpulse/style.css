@@ -344,3 +344,55 @@ li {
 .dot-walk { background-color: #f97316; color: #f97316; }
 .dot-trail { background-color: #f43f5e; color: #f43f5e; }
 .dot-default { background-color: #94a3b8; color: #94a3b8; }
+
+/* Drag and Drop Routine Cards */
+.routine-card {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.routine-card:active {
+  cursor: grabbing;
+}
+
+.routine-card.dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+  border: 1px dashed #38bdf8 !important;
+}
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  color: #64748b;
+  font-size: 1.1rem;
+  cursor: grab;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  color: #38bdf8;
+}
+
+/* Version Label above Logout Button */
+.version-badge {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: lowercase;
+}
+
+/* Creator Credit on Welcome Screen */
+.creator-credit {
+  font-size: 0.8rem;
+  color: #475569;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding-bottom: 24px;
+}
