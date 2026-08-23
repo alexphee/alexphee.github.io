@@ -109,13 +109,12 @@ function getMatchingExerciseSuggestions(input) {
   const cleanInput = input.trim().toLowerCase();
   if (cleanInput.length < 2) return [];
 
-  // Prefix matches first, then general substring matches
   const startsWithMatches = [];
   const containsMatches = [];
 
   localLibrary.forEach(item => {
     const cleanEx = item.exercise.toLowerCase();
-    if (cleanEx === cleanInput) return; // Hide if exact match typed
+    if (cleanEx === cleanInput) return;
 
     if (cleanEx.startsWith(cleanInput)) {
       startsWithMatches.push(item);
@@ -124,7 +123,7 @@ function getMatchingExerciseSuggestions(input) {
     }
   });
 
-  return [...startsWithMatches, ...containsMatches].slice(0, 6); // Max 6 results
+  return [...startsWithMatches, ...containsMatches].slice(0, 6);
 }
 
 // Ensure Exercise Exists in User's Library
@@ -231,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `).join('');
 
-    // Attach click handlers to rendered rows
     const items = containerEl.querySelectorAll('.suggestion-item');
     items.forEach((itemEl, idx) => {
       itemEl.onclick = () => onSelect(matches[idx]);
@@ -540,24 +538,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   dayTitleCancelBtn.onclick = () => dayTitleModal.classList.add('hidden');
 
-  function openRoutineModal(editIdx = null) {
+  // Globals for editing routine exercises
+  window.openRoutineModal = function(editIdx = null) {
     routineForm.reset();
     routineSuggestionBox.classList.add('hidden');
     document.getElementById('routine-edit-idx').value = editIdx !== null ? editIdx : '';
 
-    if (editIdx !== null) {
+    if (editIdx !== null && localRoutines[selectedDayName] && localRoutines[selectedDayName].exercises[editIdx]) {
       const ex = localRoutines[selectedDayName].exercises[editIdx];
-      routineExName.value = ex.exercise;
+      routineExName.value = ex.exercise || '';
       document.getElementById('routine-ex-group').value = ex.muscleGroup || 'Chest';
-      document.getElementById('routine-ex-sets').value = ex.sets;
-      document.getElementById('routine-ex-reps').value = ex.reps;
+      document.getElementById('routine-ex-sets').value = ex.sets || '';
+      document.getElementById('routine-ex-reps').value = ex.reps || '';
       document.getElementById('routine-ex-target').value = ex.target || '';
       document.getElementById('routine-ex-rotation').value = ex.rotation || '';
       document.getElementById('routine-ex-tips').value = ex.tips || '';
     }
 
     routineModal.classList.remove('hidden');
-  }
+  };
 
   routineForm.onsubmit = async (e) => {
     e.preventDefault();
