@@ -589,28 +589,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: true });
 
     handleEl.addEventListener('touchmove', (e) => {
+      if (draggedCardIndex === null) return;
       const touch = e.touches[0];
       const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
       if (!targetEl) return;
 
       const targetCard = targetEl.closest('.routine-card');
       if (targetCard && targetCard !== card) {
-        const targetIndex = parseInt(targetCard.dataset.index, 10);
-        if (!isNaN(targetIndex) && targetIndex !== draggedCardIndex) {
-          const list = localRoutines[selectedDayName].exercises;
-          const movedItem = list.splice(draggedCardIndex, 1)[0];
-          list.splice(targetIndex, 0, movedItem);
-          draggedCardIndex = targetIndex;
-          renderRoutineDay(selectedDayName);
+        const allCards = Array.from(containerEl.querySelectorAll('.routine-card'));
+        const targetIndex = allCards.indexOf(targetCard);
+        const currentIndex = allCards.indexOf(card);
+
+        if (targetIndex !== -1 && currentIndex !== -1 && targetIndex !== currentIndex) {
+          // Re-order DOM elements dynamically without triggering full page re-render
+          if (targetIndex > currentIndex) {
+            containerEl.insertBefore(card, targetCard.nextSibling);
+          } else {
+            containerEl.insertBefore(card, targetCard);
+          }
         }
       }
     }, { passive: true });
 
     handleEl.addEventListener('touchend', async () => {
       card.classList.remove('dragging');
+      
       if (draggedCardIndex !== null) {
-        await saveRoutineDayToSupabase(selectedDayName);
+        // Build updated exercise list from new DOM layout
+        const allCards = Array.from(containerEl.querySelectorAll('.routine-card'));
+        const originalList = [...localRoutines[selectedDayName].exercises];
+        const newList = [];
+
+        allCards.forEach((cEl) => {
+          const origIdx = parseInt(cEl.dataset.index, 10);
+          if (originalList[origIdx]) {
+            newList.push(originalList[origIdx]);
+          }
+        });
+
+        localRoutines[selectedDayName].exercises = newList;
         draggedCardIndex = null;
+        
+        await saveRoutineDayToSupabase(selectedDayName);
         renderRoutineDay(selectedDayName);
       }
     });
