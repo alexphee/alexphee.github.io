@@ -396,3 +396,22 @@ li {
   letter-spacing: 0.5px;
   padding-bottom: 24px;
 }
+
+/* Touch-friendly Drag Handle */
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  color: #64748b;
+  font-size: 1.2rem;
+  cursor: grab;
+  user-select: none;
+  touch-action: none; /* Prevents touch scrolling while dragging a card */
+}
+
+.routine-card.dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+  border: 1px dashed #38bdf8 !important;
+}

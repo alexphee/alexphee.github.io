@@ -507,82 +507,117 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   function renderRoutineDay(dayName) {
-    const dayData = localRoutines[dayName];
-    const titleEl = document.getElementById('routine-title');
-    const containerEl = document.getElementById('routine-container');
+  const dayData = localRoutines[dayName];
+  const titleEl = document.getElementById('routine-title');
+  const containerEl = document.getElementById('routine-container');
 
-    titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
-    containerEl.innerHTML = '';
+  titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
+  containerEl.innerHTML = '';
 
-    if (!dayData || !dayData.exercises.length) {
-      containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
-      return;
-    }
-
-    dayData.exercises.forEach((ex, idx) => {
-      const dotClass = getGroupDotClass(ex.muscleGroup);
-
-      const card = document.createElement('div');
-      card.className = 'routine-card';
-      card.draggable = true;
-      card.dataset.index = idx;
-
-      card.innerHTML = `
-        <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
-        <span class="routine-num">${idx + 1}.</span>
-        <div class="routine-card-content">
-          <div class="routine-card-header">
-            <span class="routine-card-title">${ex.exercise}</span>
-            <span class="badge">${ex.sets} sets × ${ex.reps}</span>
-          </div>
-          ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
-          ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
-          
-          <div class="routine-card-footer">
-            <div class="routine-card-footer-left">
-              <span class="group-square-badge ${dotClass}"></span>
-              <span>${ex.muscleGroup || 'General'} ${ex.target ? '• ' + ex.target : ''}</span>
-            </div>
-          </div>
-        </div>
-        <div class="actions" style="flex-direction: column; align-items: center; justify-content: center;">
-          <button class="btn-icon" style="width:24px; height:24px; margin-bottom: 4px;" onclick="openRoutineModal(${idx})">✎</button>
-          <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteRoutineExercise(${idx})">✕</button>
-        </div>
-      `;
-
-      // HTML5 Drag and Drop Handlers
-      card.addEventListener('dragstart', (e) => {
-        draggedCardIndex = idx;
-        card.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-      });
-
-      card.addEventListener('dragend', () => {
-        card.classList.remove('dragging');
-        draggedCardIndex = null;
-      });
-
-      card.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-      });
-
-      card.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        if (draggedCardIndex === null || draggedCardIndex === idx) return;
-
-        const list = localRoutines[selectedDayName].exercises;
-        const movedItem = list.splice(draggedCardIndex, 1)[0];
-        list.splice(idx, 0, movedItem);
-
-        await saveRoutineDayToSupabase(selectedDayName);
-        renderRoutineDay(selectedDayName);
-      });
-
-      containerEl.appendChild(card);
-    });
+  if (!dayData || !dayData.exercises.length) {
+    containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
+    return;
   }
+
+  dayData.exercises.forEach((ex, idx) => {
+    const dotClass = getGroupDotClass(ex.muscleGroup);
+
+    const card = document.createElement('div');
+    card.className = 'routine-card';
+    card.draggable = true;
+    card.dataset.index = idx;
+
+    card.innerHTML = `
+      <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+      <span class="routine-num">${idx + 1}.</span>
+      <div class="routine-card-content">
+        <div class="routine-card-header">
+          <span class="routine-card-title">${ex.exercise}</span>
+          <span class="badge">${ex.sets} sets × ${ex.reps}</span>
+        </div>
+        ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
+        ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
+        
+        <div class="routine-card-footer">
+          <div class="routine-card-footer-left">
+            <span class="group-square-badge ${dotClass}"></span>
+            <span>${ex.muscleGroup || 'General'} ${ex.target ? '• ' + ex.target : ''}</span>
+          </div>
+        </div>
+      </div>
+      <div class="actions" style="flex-direction: column; align-items: center; justify-content: center;">
+        <button class="btn-icon" style="width:24px; height:24px; margin-bottom: 4px;" onclick="openRoutineModal(${idx})">✎</button>
+        <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteRoutineExercise(${idx})">✕</button>
+      </div>
+    `;
+
+    // --- Desktop HTML5 Drag & Drop ---
+    card.addEventListener('dragstart', (e) => {
+      draggedCardIndex = idx;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      draggedCardIndex = null;
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    card.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      if (draggedCardIndex === null || draggedCardIndex === idx) return;
+
+      const list = localRoutines[selectedDayName].exercises;
+      const movedItem = list.splice(draggedCardIndex, 1)[0];
+      list.splice(idx, 0, movedItem);
+
+      await saveRoutineDayToSupabase(selectedDayName);
+      renderRoutineDay(selectedDayName);
+    });
+
+    // --- Mobile Touch Event Handlers ---
+    const handleEl = card.querySelector('.drag-handle');
+    
+    handleEl.addEventListener('touchstart', (e) => {
+      draggedCardIndex = idx;
+      card.classList.add('dragging');
+    }, { passive: true });
+
+    handleEl.addEventListener('touchmove', (e) => {
+      const touch = e.touches[0];
+      const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (!targetEl) return;
+
+      const targetCard = targetEl.closest('.routine-card');
+      if (targetCard && targetCard !== card) {
+        const targetIndex = parseInt(targetCard.dataset.index, 10);
+        if (!isNaN(targetIndex) && targetIndex !== draggedCardIndex) {
+          const list = localRoutines[selectedDayName].exercises;
+          const movedItem = list.splice(draggedCardIndex, 1)[0];
+          list.splice(targetIndex, 0, movedItem);
+          draggedCardIndex = targetIndex;
+          renderRoutineDay(selectedDayName);
+        }
+      }
+    }, { passive: true });
+
+    handleEl.addEventListener('touchend', async () => {
+      card.classList.remove('dragging');
+      if (draggedCardIndex !== null) {
+        await saveRoutineDayToSupabase(selectedDayName);
+        draggedCardIndex = null;
+        renderRoutineDay(selectedDayName);
+      }
+    });
+
+    containerEl.appendChild(card);
+  });
+}
 
   async function saveRoutineDayToSupabase(dayName) {
     const dayData = localRoutines[dayName];
