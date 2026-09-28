@@ -4,6 +4,9 @@ const SUPABASE_KEY = 'sb_publishable_r4ax1Hb3sM4DwAcNk22B4A_c9H-6yAd';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
+let activeAppMode = 'pulse';
+
+// Pulse State
 let localPRs = [];
 let localRoutines = {};
 let localLibrary = [];
@@ -13,9 +16,29 @@ let currentActiveTab = null;
 let libraryTargetContext = 'routine';
 let draggedCardIndex = null;
 
-// Alphabetically Sorted Default Exercise Library per Muscle Group
+// Macros State
+let macroSelectedDate = new Date().toISOString().split('T')[0];
+let macroFoods = [];
+let macroLogs = [];
+let macroTargets = { calories: 2000, protein: 160, carbs: 220, fats: 65 };
+
+const defaultMacroFoods = [
+  { id: '1', name: 'Atlantic Salmon Filet', calories: 208, protein: 20, carbs: 0, fats: 13 },
+  { id: '2', name: 'Avocado (Ripe)', calories: 160, protein: 2, carbs: 8.5, fats: 15 },
+  { id: '3', name: 'Chicken Breast (Cooked)', calories: 165, protein: 31, carbs: 0, fats: 3.6 },
+  { id: '4', name: 'Extra Virgin Olive Oil', calories: 884, protein: 0, carbs: 0, fats: 100 },
+  { id: '5', name: 'Fresh Banana', calories: 89, protein: 1.1, carbs: 23, fats: 0.3 },
+  { id: '6', name: 'Greek Yogurt 0%', calories: 59, protein: 10, carbs: 3.6, fats: 0.4 },
+  { id: '7', name: 'Rolled Oats Flakes', calories: 389, protein: 16.9, carbs: 66, fats: 6.9 },
+  { id: '8', name: 'Whey Protein Powder', calories: 380, protein: 80, carbs: 5, fats: 4 },
+  { id: '9', name: 'White Rice (Cooked)', calories: 130, protein: 2.7, carbs: 28, fats: 0.3 },
+  { id: '10', name: 'Whole Eggs (Large)', calories: 155, protein: 13, carbs: 1.1, fats: 11 }
+];
+
+const MEAL_TYPES = ['Breakfast', 'Brunch', 'Lunch', 'Snack', 'Afternoon', 'Dinner'];
+
+// Enriched Default Exercise Library
 const defaultLibrary = [
-  // Chest
   { exercise: "Barbell Bench Press", group_name: "Chest" },
   { exercise: "Cable Fly", group_name: "Chest" },
   { exercise: "Chest Dips", group_name: "Chest" },
@@ -26,8 +49,6 @@ const defaultLibrary = [
   { exercise: "Machine Chest Press", group_name: "Chest" },
   { exercise: "Pec Deck Fly", group_name: "Chest" },
   { exercise: "Push Ups", group_name: "Chest" },
-
-  // Back
   { exercise: "Barbell Bent Over Row", group_name: "Back" },
   { exercise: "Chest Supported Row", group_name: "Back" },
   { exercise: "Chin Ups", group_name: "Back" },
@@ -38,8 +59,6 @@ const defaultLibrary = [
   { exercise: "Single Arm DB Row", group_name: "Back" },
   { exercise: "Straight Arm Pulldown", group_name: "Back" },
   { exercise: "T-Bar Row", group_name: "Back" },
-
-  // Legs
   { exercise: "Barbell Back Squat", group_name: "Legs" },
   { exercise: "Bulgarian Split Squat", group_name: "Legs" },
   { exercise: "Goblet Squat", group_name: "Legs" },
@@ -50,8 +69,6 @@ const defaultLibrary = [
   { exercise: "Romanian Deadlift (RDL)", group_name: "Legs" },
   { exercise: "Seated Calf Raises", group_name: "Legs" },
   { exercise: "Standing Calf Raises", group_name: "Legs" },
-
-  // Shoulders
   { exercise: "Arnold Press", group_name: "Shoulders" },
   { exercise: "Barbell Shrugs", group_name: "Shoulders" },
   { exercise: "Cable Lateral Raises", group_name: "Shoulders" },
@@ -62,8 +79,6 @@ const defaultLibrary = [
   { exercise: "Reverse Pec Deck", group_name: "Shoulders" },
   { exercise: "Seated DB Shoulder Press", group_name: "Shoulders" },
   { exercise: "Upright Rows", group_name: "Shoulders" },
-
-  // Biceps
   { exercise: "Barbell Curl", group_name: "Biceps" },
   { exercise: "Cable Bicep Curl", group_name: "Biceps" },
   { exercise: "Concentration Curls", group_name: "Biceps" },
@@ -73,8 +88,6 @@ const defaultLibrary = [
   { exercise: "Incline DB Curl", group_name: "Biceps" },
   { exercise: "Preacher Curl", group_name: "Biceps" },
   { exercise: "Spider Curls", group_name: "Biceps" },
-
-  // Triceps
   { exercise: "Bench Dips", group_name: "Triceps" },
   { exercise: "Cable French Press", group_name: "Triceps" },
   { exercise: "Close Grip Bench Press", group_name: "Triceps" },
@@ -84,8 +97,6 @@ const defaultLibrary = [
   { exercise: "Straight Bar Pushdown", group_name: "Triceps" },
   { exercise: "Tricep Overhead Extension", group_name: "Triceps" },
   { exercise: "Tricep Rope Pushdown", group_name: "Triceps" },
-
-  // Core
   { exercise: "Ab Wheel Rollouts", group_name: "Core" },
   { exercise: "Cable Crunches", group_name: "Core" },
   { exercise: "Cable Woodchoppers", group_name: "Core" },
@@ -95,20 +106,14 @@ const defaultLibrary = [
   { exercise: "Heel Touches", group_name: "Core" },
   { exercise: "Plank", group_name: "Core" },
   { exercise: "Russian Twists", group_name: "Core" },
-
-  // Run
   { exercise: "Road Running", group_name: "Run" },
   { exercise: "Sprint Intervals", group_name: "Run" },
   { exercise: "Tempo Run", group_name: "Run" },
   { exercise: "Track Intervals", group_name: "Run" },
   { exercise: "Treadmill Run", group_name: "Run" },
-
-  // Walk
   { exercise: "Incline Treadmill Walk", group_name: "Walk" },
   { exercise: "Outdoor Power Walk", group_name: "Walk" },
   { exercise: "Weighted Vest Walk", group_name: "Walk" },
-
-  // Trail
   { exercise: "Mountain Hike", group_name: "Trail" },
   { exercise: "Trail Run", group_name: "Trail" },
   { exercise: "Ultra Trail Run", group_name: "Trail" }
@@ -124,11 +129,9 @@ const defaultRoutines = {
   Sunday: { title: "Workout Title", exercises: [] }
 };
 
-// Returns CSS Dot Class based on Muscle Group
 function getGroupDotClass(groupName) {
   if (!groupName) return 'dot-default';
-  const clean = groupName.toLowerCase().trim();
-  switch (clean) {
+  switch (groupName.toLowerCase().trim()) {
     case 'chest': return 'dot-chest';
     case 'back': return 'dot-back';
     case 'legs': return 'dot-legs';
@@ -143,45 +146,6 @@ function getGroupDotClass(groupName) {
   }
 }
 
-// Filter All Matching Exercises Starting With / Containing Input
-function getMatchingExerciseSuggestions(input) {
-  const cleanInput = input.trim().toLowerCase();
-  if (cleanInput.length < 2) return [];
-
-  const startsWithMatches = [];
-  const containsMatches = [];
-
-  localLibrary.forEach(item => {
-    const cleanEx = item.exercise.toLowerCase();
-    if (cleanEx === cleanInput) return;
-
-    if (cleanEx.startsWith(cleanInput)) {
-      startsWithMatches.push(item);
-    } else if (cleanEx.includes(cleanInput)) {
-      containsMatches.push(item);
-    }
-  });
-
-  return [...startsWithMatches, ...containsMatches].slice(0, 6);
-}
-
-// Ensure Exercise Exists in User's Library
-async function ensureExerciseInLibrary(exerciseName, groupName) {
-  const exists = localLibrary.some(l => l.exercise.toLowerCase() === exerciseName.toLowerCase());
-  if (!exists) {
-    const { data } = await supabaseClient
-      .from('library')
-      .insert([{ user_id: currentUser.id, exercise: exerciseName, group_name: groupName }])
-      .select();
-      
-    if (data && data.length) {
-      localLibrary.push(data[0]);
-    } else {
-      localLibrary.push({ exercise: exerciseName, group_name: groupName });
-    }
-  }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   const authView = document.getElementById('auth-view');
   const appView = document.getElementById('app-view');
@@ -193,6 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const container = document.getElementById('pr-container');
   const searchBar = document.getElementById('search-bar');
   const fabAdd = document.getElementById('fab-add');
+  const appSwitchBtn = document.getElementById('app-switch-btn');
 
   const tabRecords = document.getElementById('tab-records');
   const tabRoutine = document.getElementById('tab-routine');
@@ -234,107 +199,38 @@ document.addEventListener('DOMContentLoaded', () => {
   const percentColumns = document.getElementById('percent-columns');
   const percentCloseBtn = document.getElementById('percent-close-btn');
 
-  // Input Suggestion Event Listeners
-  routineExName.addEventListener('input', () => {
-    renderSuggestionList(routineExName.value, routineSuggestionBox, (selectedObj) => {
-      routineExName.value = selectedObj.exercise;
-      document.getElementById('routine-ex-group').value = selectedObj.group_name;
-      routineSuggestionBox.classList.add('hidden');
-    });
-  });
-
-  prExInput.addEventListener('input', () => {
-    renderSuggestionList(prExInput.value, prSuggestionBox, (selectedObj) => {
-      prExInput.value = selectedObj.exercise;
-      categorySelect.value = selectedObj.group_name;
-      updatePRModalLabels();
-      prSuggestionBox.classList.add('hidden');
-    });
-  });
-
-  function renderSuggestionList(inputVal, containerEl, onSelect) {
-    const matches = getMatchingExerciseSuggestions(inputVal);
-    
-    if (matches.length === 0) {
-      containerEl.classList.add('hidden');
-      containerEl.innerHTML = '';
-      return;
-    }
-
-    containerEl.className = 'suggestion-list-container';
-    containerEl.innerHTML = matches.map(item => `
-      <div class="suggestion-item">
-        <span class="item-title">${item.exercise}</span>
-        <span class="item-group">${item.group_name}</span>
-      </div>
-    `).join('');
-
-    const items = containerEl.querySelectorAll('.suggestion-item');
-    items.forEach((itemEl, idx) => {
-      itemEl.onclick = () => onSelect(matches[idx]);
-    });
-
-    containerEl.classList.remove('hidden');
-  }
-
-  // Open Library Accordion for PR or Routine
-  document.querySelectorAll('.open-lib-trigger').forEach(btn => {
-    btn.onclick = (e) => {
-      const isPR = e.target.closest('#pr-modal') !== null;
-      libraryTargetContext = isPR ? 'pr' : 'routine';
-      renderLibraryAccordion();
-      libraryModal.classList.remove('hidden');
-    };
-  });
-
-  categorySelect.onchange = () => updatePRModalLabels();
-
-  function updatePRModalLabels() {
-    const isCardio = ['Run', 'Walk', 'Trail'].includes(categorySelect.value);
-    weightInput.placeholder = isCardio ? "Distance (km)" : "Weight (kg)";
-    repsInput.placeholder = isCardio ? "Time (min)" : "Reps";
-  }
-
-  tabRoutine.onclick = () => switchTab('routine');
-  tabRecords.onclick = () => switchTab('records');
-  tabChart.onclick = () => switchTab('chart');
-
-  function switchTab(tab) {
-    currentActiveTab = tab;
-    localStorage.setItem('apex_active_tab', tab); // Persist state across visits
-    landingView.classList.add('hidden');
-
-    tabRoutine.classList.toggle('active', tab === 'routine');
-    tabRecords.classList.toggle('active', tab === 'records');
-    tabChart.classList.toggle('active', tab === 'chart');
-
-    routineView.classList.toggle('hidden', tab !== 'routine');
-    recordsView.classList.toggle('hidden', tab !== 'records');
-    chartView.classList.toggle('hidden', tab !== 'chart');
-
-    fabAdd.classList.remove('hidden');
-
-    if (tab === 'routine') renderRoutineDay(selectedDayName);
-    if (tab === 'records') renderPRs();
-    if (tab === 'chart') populateChartDropdown();
-  }
-
-  fabAdd.onclick = () => {
-    if (currentActiveTab === 'routine') window.openRoutineModal();
-    else if (currentActiveTab === 'records') openModal();
+  // App Mode Switching
+  appSwitchBtn.onclick = () => {
+    activeAppMode = activeAppMode === 'pulse' ? 'macros' : 'pulse';
+    localStorage.setItem('rensa_app_mode', activeAppMode);
+    renderAppMode();
   };
 
+  function renderAppMode() {
+    const pulseContainer = document.getElementById('pulse-mode-container');
+    const macrosContainer = document.getElementById('macros-mode-container');
+    const titleDisplay = document.getElementById('app-title-display');
+
+    if (activeAppMode === 'macros') {
+      pulseContainer.classList.add('hidden');
+      macrosContainer.classList.remove('hidden');
+      titleDisplay.textContent = 'Rensa Macros';
+      appSwitchBtn.textContent = '🏋️ Switch to Workout Routine';
+      loadMacroData();
+    } else {
+      macrosContainer.classList.add('hidden');
+      pulseContainer.classList.remove('hidden');
+      titleDisplay.textContent = 'Rensa Pulse';
+      appSwitchBtn.textContent = '⚡ Switch to Nutrition';
+    }
+  }
+
+  // Auth Handling
   if (loginBtn) {
     loginBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
-
-      if (!email || !password) {
-        alert('Please enter both email and password.');
-        return;
-      }
-
       const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) alert(error.message);
     });
@@ -346,49 +242,33 @@ document.addEventListener('DOMContentLoaded', () => {
       const username = document.getElementById('username').value.trim();
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
-
-      if (!username || !email || !password) {
-        alert('Please fill in a username, email, and password to sign up.');
-        return;
-      }
-
-      const { error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: { data: { username } }
-      });
-
+      const { error } = await supabaseClient.auth.signUp({ email, password, options: { data: { username } } });
       if (error) alert(error.message);
-      else alert('Account created! Please check your email if confirmation is required.');
+      else alert('Account created!');
     });
   }
 
-  if (logoutBtn) {
-    logoutBtn.onclick = async () => { 
-      localStorage.removeItem('apex_active_tab'); // Clear tab preference on logout
-      await supabaseClient.auth.signOut(); 
-    };
-  }
+  logoutBtn.onclick = async () => {
+    localStorage.removeItem('apex_active_tab');
+    await supabaseClient.auth.signOut();
+  };
 
   supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (session) {
       currentUser = session.user;
-      const customName = currentUser.user_metadata?.username || currentUser.email.split('@')[0];
-      userDisplay.textContent = `@${customName}`;
-      
+      userDisplay.textContent = `@${currentUser.user_metadata?.username || currentUser.email.split('@')[0]}`;
       authView.classList.add('hidden');
       appView.classList.remove('hidden');
-      
+
+      activeAppMode = localStorage.getItem('rensa_app_mode') || 'pulse';
+      renderAppMode();
+
       await autoMigrateLocalStorage();
       await fetchAllUserData();
 
-      // Check if user has a previously active tab saved
       const savedTab = localStorage.getItem('apex_active_tab');
-      if (savedTab && ['routine', 'records', 'chart'].includes(savedTab)) {
-        switchTab(savedTab);
-      } else {
-        resetDashboardView();
-      }
+      if (savedTab) switchTab(savedTab);
+      else resetDashboardView();
     } else {
       currentUser = null;
       authView.classList.remove('hidden');
@@ -445,58 +325,35 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('prs_users', JSON.stringify(usersLS));
   }
 
-  libraryCloseBtn.onclick = () => libraryModal.classList.add('hidden');
+  // Rensa Pulse Navigation & Tab Logic
+  tabRoutine.onclick = () => switchTab('routine');
+  tabRecords.onclick = () => switchTab('records');
+  tabChart.onclick = () => switchTab('chart');
 
-  function renderLibraryAccordion() {
-    libraryAccordion.innerHTML = '';
-    const groups = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps", "Core", "Run", "Walk", "Trail"];
+  function switchTab(tab) {
+    currentActiveTab = tab;
+    localStorage.setItem('apex_active_tab', tab);
+    landingView.classList.add('hidden');
 
-    groups.forEach(groupName => {
-      const items = localLibrary
-        .filter(item => item.group_name === groupName)
-        .sort((a, b) => a.exercise.localeCompare(b.exercise));
+    tabRoutine.classList.toggle('active', tab === 'routine');
+    tabRecords.classList.toggle('active', tab === 'records');
+    tabChart.classList.toggle('active', tab === 'chart');
 
-      if (items.length === 0) return;
+    routineView.classList.toggle('hidden', tab !== 'routine');
+    recordsView.classList.toggle('hidden', tab !== 'records');
+    chartView.classList.toggle('hidden', tab !== 'chart');
 
-      const groupDiv = document.createElement('div');
-      groupDiv.className = 'accordion-group';
+    fabAdd.classList.remove('hidden');
 
-      const headerDiv = document.createElement('div');
-      headerDiv.className = 'accordion-header';
-      headerDiv.innerHTML = `<span>${groupName} (${items.length})</span> <span class="acc-icon">[+]</span>`;
-
-      const contentDiv = document.createElement('div');
-      contentDiv.className = 'accordion-content';
-
-      items.forEach(item => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'accordion-item';
-        itemDiv.textContent = item.exercise;
-        itemDiv.onclick = () => {
-          if (libraryTargetContext === 'pr') {
-            prExInput.value = item.exercise;
-            categorySelect.value = item.group_name;
-            updatePRModalLabels();
-          } else {
-            routineExName.value = item.exercise;
-            document.getElementById('routine-ex-group').value = item.group_name;
-          }
-          libraryModal.classList.add('hidden');
-        };
-        contentDiv.appendChild(itemDiv);
-      });
-
-      headerDiv.onclick = () => {
-        const isOpen = contentDiv.classList.contains('open');
-        contentDiv.classList.toggle('open', !isOpen);
-        headerDiv.querySelector('.acc-icon').textContent = isOpen ? '[+]' : '[-]';
-      };
-
-      groupDiv.appendChild(headerDiv);
-      groupDiv.appendChild(contentDiv);
-      libraryAccordion.appendChild(groupDiv);
-    });
+    if (tab === 'routine') renderRoutineDay(selectedDayName);
+    if (tab === 'records') renderPRs();
+    if (tab === 'chart') populateChartDropdown();
   }
+
+  fabAdd.onclick = () => {
+    if (currentActiveTab === 'routine') window.openRoutineModal();
+    else if (currentActiveTab === 'records') openModal();
+  };
 
   window.selectDay = (dayName) => {
     selectedDayName = dayName;
@@ -507,137 +364,101 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   function renderRoutineDay(dayName) {
-  const dayData = localRoutines[dayName];
-  const titleEl = document.getElementById('routine-title');
-  const containerEl = document.getElementById('routine-container');
+    const dayData = localRoutines[dayName];
+    const titleEl = document.getElementById('routine-title');
+    const containerEl = document.getElementById('routine-container');
 
-  titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
-  containerEl.innerHTML = '';
+    titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
+    containerEl.innerHTML = '';
 
-  if (!dayData || !dayData.exercises.length) {
-    containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
-    return;
-  }
+    if (!dayData || !dayData.exercises.length) {
+      containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
+      return;
+    }
 
-  dayData.exercises.forEach((ex, idx) => {
-    const dotClass = getGroupDotClass(ex.muscleGroup);
+    dayData.exercises.forEach((ex, idx) => {
+      const dotClass = getGroupDotClass(ex.muscleGroup);
 
-    const card = document.createElement('div');
-    card.className = 'routine-card';
-    card.draggable = true;
-    card.dataset.index = idx;
+      const card = document.createElement('div');
+      card.className = 'routine-card';
+      card.draggable = true;
+      card.dataset.index = idx;
 
-    card.innerHTML = `
-      <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
-      <span class="routine-num">${idx + 1}.</span>
-      <div class="routine-card-content">
-        <div class="routine-card-header">
-          <span class="routine-card-title">${ex.exercise}</span>
-          <span class="badge">${ex.sets} sets × ${ex.reps}</span>
-        </div>
-        ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
-        ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
-        
-        <div class="routine-card-footer">
-          <div class="routine-card-footer-left">
-            <span class="group-square-badge ${dotClass}"></span>
-            <span>${ex.muscleGroup || 'General'} ${ex.target ? '• ' + ex.target : ''}</span>
+      card.innerHTML = `
+        <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+        <span class="routine-num">${idx + 1}.</span>
+        <div class="routine-card-content">
+          <div class="routine-card-header">
+            <span class="routine-card-title">${ex.exercise}</span>
+            <span class="badge">${ex.sets} sets × ${ex.reps}</span>
+          </div>
+          ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
+          ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
+          
+          <div class="routine-card-footer">
+            <div class="routine-card-footer-left">
+              <span class="group-square-badge ${dotClass}"></span>
+              <span>${ex.muscleGroup || 'General'} ${ex.target ? '• ' + ex.target : ''}</span>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="actions" style="flex-direction: column; align-items: center; justify-content: center;">
-        <button class="btn-icon" style="width:24px; height:24px; margin-bottom: 4px;" onclick="openRoutineModal(${idx})">✎</button>
-        <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteRoutineExercise(${idx})">✕</button>
-      </div>
-    `;
+        <div class="actions" style="flex-direction: column; align-items: center; justify-content: center;">
+          <button class="btn-icon" style="width:24px; height:24px; margin-bottom: 4px;" onclick="openRoutineModal(${idx})">✎</button>
+          <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteRoutineExercise(${idx})">✕</button>
+        </div>
+      `;
 
-    // --- Desktop HTML5 Drag & Drop ---
-    card.addEventListener('dragstart', (e) => {
-      draggedCardIndex = idx;
-      card.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
+      // Touch handlers for mobile drag & drop
+      const handleEl = card.querySelector('.drag-handle');
+      handleEl.addEventListener('touchstart', () => {
+        draggedCardIndex = idx;
+        card.classList.add('dragging');
+      }, { passive: true });
 
-    card.addEventListener('dragend', () => {
-      card.classList.remove('dragging');
-      draggedCardIndex = null;
-    });
+      handleEl.addEventListener('touchmove', (e) => {
+        if (draggedCardIndex === null) return;
+        const touch = e.touches[0];
+        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (!targetEl) return;
 
-    card.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-    });
+        const targetCard = targetEl.closest('.routine-card');
+        if (targetCard && targetCard !== card) {
+          const allCards = Array.from(containerEl.querySelectorAll('.routine-card'));
+          const targetIndex = allCards.indexOf(targetCard);
+          const currentIndex = allCards.indexOf(card);
 
-    card.addEventListener('drop', async (e) => {
-      e.preventDefault();
-      if (draggedCardIndex === null || draggedCardIndex === idx) return;
-
-      const list = localRoutines[selectedDayName].exercises;
-      const movedItem = list.splice(draggedCardIndex, 1)[0];
-      list.splice(idx, 0, movedItem);
-
-      await saveRoutineDayToSupabase(selectedDayName);
-      renderRoutineDay(selectedDayName);
-    });
-
-    // --- Mobile Touch Event Handlers ---
-    const handleEl = card.querySelector('.drag-handle');
-    
-    handleEl.addEventListener('touchstart', (e) => {
-      draggedCardIndex = idx;
-      card.classList.add('dragging');
-    }, { passive: true });
-
-    handleEl.addEventListener('touchmove', (e) => {
-      if (draggedCardIndex === null) return;
-      const touch = e.touches[0];
-      const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
-      if (!targetEl) return;
-
-      const targetCard = targetEl.closest('.routine-card');
-      if (targetCard && targetCard !== card) {
-        const allCards = Array.from(containerEl.querySelectorAll('.routine-card'));
-        const targetIndex = allCards.indexOf(targetCard);
-        const currentIndex = allCards.indexOf(card);
-
-        if (targetIndex !== -1 && currentIndex !== -1 && targetIndex !== currentIndex) {
-          // Re-order DOM elements dynamically without triggering full page re-render
-          if (targetIndex > currentIndex) {
-            containerEl.insertBefore(card, targetCard.nextSibling);
-          } else {
-            containerEl.insertBefore(card, targetCard);
+          if (targetIndex !== -1 && currentIndex !== -1 && targetIndex !== currentIndex) {
+            if (targetIndex > currentIndex) {
+              containerEl.insertBefore(card, targetCard.nextSibling);
+            } else {
+              containerEl.insertBefore(card, targetCard);
+            }
           }
         }
-      }
-    }, { passive: true });
+      }, { passive: true });
 
-    handleEl.addEventListener('touchend', async () => {
-      card.classList.remove('dragging');
-      
-      if (draggedCardIndex !== null) {
-        // Build updated exercise list from new DOM layout
-        const allCards = Array.from(containerEl.querySelectorAll('.routine-card'));
-        const originalList = [...localRoutines[selectedDayName].exercises];
-        const newList = [];
+      handleEl.addEventListener('touchend', async () => {
+        card.classList.remove('dragging');
+        if (draggedCardIndex !== null) {
+          const allCards = Array.from(containerEl.querySelectorAll('.routine-card'));
+          const originalList = [...localRoutines[selectedDayName].exercises];
+          const newList = [];
 
-        allCards.forEach((cEl) => {
-          const origIdx = parseInt(cEl.dataset.index, 10);
-          if (originalList[origIdx]) {
-            newList.push(originalList[origIdx]);
-          }
-        });
+          allCards.forEach((cEl) => {
+            const origIdx = parseInt(cEl.dataset.index, 10);
+            if (originalList[origIdx]) newList.push(originalList[origIdx]);
+          });
 
-        localRoutines[selectedDayName].exercises = newList;
-        draggedCardIndex = null;
-        
-        await saveRoutineDayToSupabase(selectedDayName);
-        renderRoutineDay(selectedDayName);
-      }
+          localRoutines[selectedDayName].exercises = newList;
+          draggedCardIndex = null;
+          await saveRoutineDayToSupabase(selectedDayName);
+          renderRoutineDay(selectedDayName);
+        }
+      });
+
+      containerEl.appendChild(card);
     });
-
-    containerEl.appendChild(card);
-  });
-}
+  }
 
   async function saveRoutineDayToSupabase(dayName) {
     const dayData = localRoutines[dayName];
@@ -654,21 +475,6 @@ document.addEventListener('DOMContentLoaded', () => {
     await saveRoutineDayToSupabase(selectedDayName);
     renderRoutineDay(selectedDayName);
   };
-
-  window.openDayTitleModal = () => {
-    document.getElementById('day-title-input').value = localRoutines[selectedDayName]?.title || '';
-    dayTitleModal.classList.remove('hidden');
-  };
-
-  dayTitleForm.onsubmit = async (e) => {
-    e.preventDefault();
-    localRoutines[selectedDayName].title = document.getElementById('day-title-input').value.trim();
-    await saveRoutineDayToSupabase(selectedDayName);
-    dayTitleModal.classList.add('hidden');
-    renderRoutineDay(selectedDayName);
-  };
-
-  dayTitleCancelBtn.onclick = () => dayTitleModal.classList.add('hidden');
 
   window.openRoutineModal = function(editIdx = null) {
     routineForm.reset();
@@ -700,8 +506,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const rotation = document.getElementById('routine-ex-rotation').value.trim();
     const tips = document.getElementById('routine-ex-tips').value.trim();
 
-    await ensureExerciseInLibrary(exercise, muscleGroup);
-
     const newObj = { exercise, muscleGroup, sets, reps, target, rotation, tips };
 
     if (editIdx !== '') localRoutines[selectedDayName].exercises[editIdx] = newObj;
@@ -723,20 +527,17 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('edit-id').value = pr.id;
       prExInput.value = pr.exercise;
       categorySelect.value = pr.category;
-      updatePRModalLabels();
       weightInput.value = pr.weight;
       repsInput.value = pr.reps;
     } else {
       modalTitle.textContent = 'Add New PR';
       document.getElementById('edit-id').value = '';
       categorySelect.selectedIndex = 0;
-      updatePRModalLabels();
     }
     prModal.classList.remove('hidden');
   }
 
-  function closeModal() { prModal.classList.add('hidden'); prForm.reset(); }
-  cancelBtn.onclick = closeModal;
+  cancelBtn.onclick = () => prModal.classList.add('hidden');
 
   prForm.onsubmit = async (e) => {
     e.preventDefault();
@@ -746,8 +547,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const weight = Math.max(0, parseFloat(weightInput.value) || 0);
     const reps = Math.max(0, parseFloat(repsInput.value) || 0);
     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-    await ensureExerciseInLibrary(exercise, category);
 
     if (id) {
       const existing = localPRs.find(p => p.id == id);
@@ -761,60 +560,10 @@ document.addEventListener('DOMContentLoaded', () => {
       await supabaseClient.from('prs').insert([{ user_id: currentUser.id, exercise, category, weight, reps, history }]);
     }
 
-    closeModal();
+    prModal.classList.add('hidden');
     await fetchAllUserData();
     renderPRs();
   };
-
-  window.editPr = (id) => {
-    const pr = localPRs.find(p => p.id === id);
-    if (pr) openModal(pr);
-  };
-
-  window.deletePr = async (id) => {
-    await supabaseClient.from('prs').delete().eq('id', id);
-    await fetchAllUserData();
-    renderPRs();
-  };
-
-  window.showPercentages = (id) => {
-    const pr = localPRs.find(p => p.id === id);
-    if (!pr) return;
-
-    const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
-
-    percentTitle.textContent = pr.exercise;
-    
-    if (isCardio) {
-      percentSubtitle.textContent = `Best: ${pr.weight} km in ${pr.reps} min`;
-      oneRmBox.textContent = `Pace: ~${(pr.reps / pr.weight).toFixed(2)} min/km`;
-    } else {
-      percentSubtitle.textContent = `100% PR = ${pr.weight} kg (${pr.reps} reps)`;
-      const est1RM = pr.reps === 1 ? pr.weight : Math.round(pr.weight * (1 + pr.reps / 30));
-      oneRmBox.textContent = `Est. 1-Rep Max (1RM): ~${est1RM} kg`;
-    }
-
-    const percentages = [];
-    for (let pct = 95; pct >= 50; pct -= 5) percentages.push(pct);
-
-    const renderColumn = (pctList) => {
-      return pctList.map(pct => {
-        const calculatedVal = ((pr.weight * pct) / 100).toFixed(1);
-        const unit = isCardio ? 'km' : 'kg';
-        return `<div class="percent-row"><span>${pct}%</span><span>${parseFloat(calculatedVal)} ${unit}</span></div>`;
-      }).join('');
-    };
-
-    percentColumns.innerHTML = `
-      <div class="percent-col">${renderColumn(percentages.filter(p => p >= 75))}</div>
-      <div class="percent-col">${renderColumn(percentages.filter(p => p < 75))}</div>
-    `;
-
-    percentModal.classList.remove('hidden');
-  };
-
-  percentCloseBtn.onclick = () => percentModal.classList.add('hidden');
-  searchBar.oninput = () => renderPRs();
 
   function renderPRs() {
     container.innerHTML = '';
@@ -825,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
     );
 
     if (prs.length === 0) {
-      container.innerHTML = `<div class="empty-state">${filterText ? 'No matching exercises or categories.' : 'No PRs recorded yet. Tap + to add one!'}</div>`;
+      container.innerHTML = `<div class="empty-state">No PRs recorded yet. Tap + to add one!</div>`;
       return;
     }
 
@@ -840,8 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const ul = document.createElement('ul');
 
       items.forEach(pr => {
-        const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
-        const badgeText = isCardio ? `${pr.weight} km in ${pr.reps} min` : `${pr.weight} kg × ${pr.reps}`;
+        const badgeText = `${pr.weight} kg × ${pr.reps}`;
         const dotClass = getGroupDotClass(pr.category);
 
         ul.innerHTML += `
@@ -867,6 +615,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  window.editPr = (id) => {
+    const pr = localPRs.find(p => p.id === id);
+    if (pr) openModal(pr);
+  };
+
+  window.deletePr = async (id) => {
+    await supabaseClient.from('prs').delete().eq('id', id);
+    await fetchAllUserData();
+    renderPRs();
+  };
+
   function populateChartDropdown() {
     chartSelect.innerHTML = '<option value="" disabled selected>Select Exercise to View Graph</option>';
     localPRs.forEach(pr => {
@@ -883,59 +642,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const pr = localPRs.find(p => p.id === id);
     if (!pr || !pr.history) return;
 
-    const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
-    const unitLabel = isCardio ? 'km' : 'kg';
-
-    const labels = pr.history.map(h => h.date);
-    const data = pr.history.map(h => h.weight);
-
     if (chartInstance) chartInstance.destroy();
-
     const ctx = document.getElementById('prChart').getContext('2d');
     chartInstance = new Chart(ctx, {
       type: 'line',
       data: {
-        labels,
-        datasets: [{
-          label: `${pr.exercise} (${unitLabel})`,
-          data,
-          borderColor: '#60a5fa',
-          backgroundColor: 'rgba(96, 165, 250, 0.15)',
-          borderWidth: 2, fill: true, tension: 0.3
-        }]
+        labels: pr.history.map(h => h.date),
+        datasets: [{ label: `${pr.exercise} (kg)`, data: pr.history.map(h => h.weight), borderColor: '#22c55e', fill: true, tension: 0.3 }]
       },
-      options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: '#f8fafc' } } },
-        scales: {
-          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
-        }
-      }
-    });
-
-    historyManager.innerHTML = '<div class="group-header">History Points</div>';
-    pr.history.forEach((point, index) => {
-      historyManager.innerHTML += `
-        <div class="history-item">
-          <span><strong>${point.weight} ${unitLabel}</strong> on ${point.date}</span>
-          <button class="btn-icon del" onclick="deleteHistoryPoint(${pr.id}, ${index})">✕</button>
-        </div>
-      `;
+      options: { responsive: true }
     });
   }
-
-  window.deleteHistoryPoint = async (prId, index) => {
-    const pr = localPRs.find(p => p.id === prId);
-    if (!pr) return;
-
-    pr.history.splice(index, 1);
-    const maxWeight = pr.history.length > 0 ? Math.max(...pr.history.map(h => h.weight)) : 0;
-
-    await supabaseClient.from('prs').update({ weight: maxWeight, history: pr.history }).eq('id', prId);
-    await fetchAllUserData();
-    renderChartForExercise(prId);
-  };
 
   function resetDashboardView() {
     currentActiveTab = null;
@@ -944,14 +661,229 @@ document.addEventListener('DOMContentLoaded', () => {
     recordsView.classList.add('hidden');
     chartView.classList.add('hidden');
     fabAdd.classList.add('hidden');
-
-    tabRoutine.classList.remove('active');
-    tabRecords.classList.remove('active');
-    tabChart.classList.remove('active');
   }
-});
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js')
-    .catch(err => console.log('ServiceWorker registration skipped:', err));
-}
+  // ================= RENSA MACROS NUTRITION LOGIC =================
+  window.switchMacroTab = function(tab) {
+    document.querySelectorAll('.macro-tab-content').forEach(el => el.classList.add('hidden'));
+    document.getElementById(`macro-tab-${tab}`).classList.remove('hidden');
+    document.querySelectorAll('#macros-mode-container .tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tab-macro-${tab}`).classList.add('active');
+  };
+
+  async function loadMacroData() {
+    document.getElementById('macro-date-picker').value = macroSelectedDate;
+    const storedTargets = localStorage.getItem('rensa_macro_targets');
+    if (storedTargets) macroTargets = JSON.parse(storedTargets);
+
+    document.getElementById('target-calories').value = macroTargets.calories;
+    document.getElementById('target-protein').value = macroTargets.protein;
+    document.getElementById('target-carbs').value = macroTargets.carbs;
+    document.getElementById('target-fats').value = macroTargets.fats;
+
+    const { data: foodData } = await supabaseClient.from('macros_foods').select('*');
+    macroFoods = (foodData && foodData.length > 0) ? foodData : defaultMacroFoods;
+
+    // Automatic A-Z Alphabetical Sort for Foods
+    sortMacroFoodsAlphabetically();
+
+    const { data: logData } = await supabaseClient.from('macros_logs').select('*').eq('date', macroSelectedDate);
+    macroLogs = logData || [];
+
+    renderMacroLogs();
+    renderMacroFoodLibrary();
+  }
+
+  // Alphabetical Food List Sorter Helper
+  function sortMacroFoodsAlphabetically() {
+    macroFoods.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  }
+
+  function renderMacroLogs() {
+    const consumed = macroLogs.reduce((acc, curr) => ({
+      calories: acc.calories + (Number(curr.calories) || 0),
+      protein: acc.protein + (Number(curr.protein) || 0),
+      carbs: acc.carbs + (Number(curr.carbs) || 0),
+      fats: acc.fats + (Number(curr.fats) || 0)
+    }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
+
+    document.getElementById('sum-cal-consumed').textContent = Math.round(consumed.calories);
+    document.getElementById('sum-cal-target').textContent = macroTargets.calories;
+    document.getElementById('bar-cal').style.width = `${Math.min(100, (consumed.calories / macroTargets.calories) * 100)}%`;
+
+    document.getElementById('sum-protein-consumed').textContent = Math.round(consumed.protein);
+    document.getElementById('sum-protein-target').textContent = macroTargets.protein;
+    document.getElementById('bar-protein').style.width = `${Math.min(100, (consumed.protein / macroTargets.protein) * 100)}%`;
+
+    document.getElementById('sum-carbs-consumed').textContent = Math.round(consumed.carbs);
+    document.getElementById('sum-carbs-target').textContent = macroTargets.carbs;
+    document.getElementById('bar-carbs').style.width = `${Math.min(100, (consumed.carbs / macroTargets.carbs) * 100)}%`;
+
+    document.getElementById('sum-fats-consumed').textContent = Math.round(consumed.fats);
+    document.getElementById('sum-fats-target').textContent = macroTargets.fats;
+    document.getElementById('bar-fats').style.width = `${Math.min(100, (consumed.fats / macroTargets.fats) * 100)}%`;
+
+    document.getElementById('macro-date-display').textContent = macroSelectedDate;
+
+    const container = document.getElementById('meal-sections-container');
+    container.innerHTML = '';
+
+    MEAL_TYPES.forEach(meal => {
+      const mealItems = macroLogs.filter(i => i.meal_type.toLowerCase() === meal.toLowerCase());
+      const card = document.createElement('div');
+      card.className = 'glass-card space-y-2';
+
+      let itemsHtml = mealItems.length === 0 ? '<div style="font-size:0.75rem; color:#64748b; font-style:italic;">No items logged.</div>' :
+        mealItems.map(item => `
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; background:rgba(15,23,42,0.5); padding:6px 10px; border-radius:8px; margin-top:4px;">
+            <div><strong>${item.food_name}</strong> - ${item.weight}g (${item.calories} kcal)</div>
+            <button class="btn-icon del" onclick="deleteMacroLog('${item.id}')">✕</button>
+          </div>
+        `).join('');
+
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; font-weight:700; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:4px;">
+          <span>${meal}</span>
+          <button onclick="openAddLogModal('${meal}')" style="font-size:0.75rem; color:#00f0ff; background:none;">+ Add Food</button>
+        </div>
+        ${itemsHtml}
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  window.saveMacroTargets = function(e) {
+    e.preventDefault();
+    macroTargets = {
+      calories: parseFloat(document.getElementById('target-calories').value) || 2000,
+      protein: parseFloat(document.getElementById('target-protein').value) || 160,
+      carbs: parseFloat(document.getElementById('target-carbs').value) || 220,
+      fats: parseFloat(document.getElementById('target-fats').value) || 65
+    };
+    localStorage.setItem('rensa_macro_targets', JSON.stringify(macroTargets));
+    renderMacroLogs();
+    alert('Macro targets saved!');
+  };
+
+  window.renderMacroFoodLibrary = function(searchTerm = '') {
+    const grid = document.getElementById('food-library-grid');
+    grid.innerHTML = '';
+    
+    // Sort A-Z before rendering
+    sortMacroFoodsAlphabetically();
+    
+    const filtered = macroFoods.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    filtered.forEach(food => {
+      const card = document.createElement('div');
+      card.className = 'macro-card space-y-1';
+      card.innerHTML = `
+        <div style="font-weight:700; color:#f8fafc; font-size:0.85rem;">${food.name}</div>
+        <div style="font-size:0.75rem; color:#00f0ff;">${food.calories} kcal / 100g</div>
+        <div style="font-size:0.7rem; color:#94a3b8;">P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fats}g</div>
+      `;
+      grid.appendChild(card);
+    });
+  };
+
+  window.filterFoodLibrary = function(term) { renderMacroFoodLibrary(term); };
+  window.changeMacroDate = function(offset) {
+    const d = new Date(macroSelectedDate);
+    d.setDate(d.getDate() + offset);
+    macroSelectedDate = d.toISOString().split('T')[0];
+    loadMacroData();
+  };
+
+  window.onMacroDateChange = function(val) { macroSelectedDate = val; loadMacroData(); };
+  window.setMacroToday = function() { macroSelectedDate = new Date().toISOString().split('T')[0]; loadMacroData(); };
+
+  window.openAddLogModal = function(meal = 'Lunch') {
+    document.getElementById('modal-log-date').value = macroSelectedDate;
+    document.getElementById('modal-log-meal').value = meal;
+    const select = document.getElementById('modal-log-food');
+    select.innerHTML = '';
+    
+    sortMacroFoodsAlphabetically();
+    macroFoods.forEach(f => {
+      select.innerHTML += `<option value="${f.id}">${f.name} (${f.calories} kcal/100g)</option>`;
+    });
+    updateModalCalculations();
+    document.getElementById('modal-add-log').classList.remove('hidden');
+  };
+
+  window.closeAddLogModal = function() { document.getElementById('modal-add-log').classList.add('hidden'); };
+
+  window.updateModalCalculations = function() {
+    const foodId = document.getElementById('modal-log-food').value;
+    const weight = parseFloat(document.getElementById('modal-log-weight').value) || 0;
+    const food = macroFoods.find(f => f.id == foodId);
+    if (food) {
+      const factor = weight / 100;
+      document.getElementById('preview-calc-cal').textContent = Math.round(food.calories * factor);
+      document.getElementById('preview-calc-protein').textContent = `${Math.round(food.protein * factor * 10)/10}g`;
+      document.getElementById('preview-calc-carbs').textContent = `${Math.round(food.carbs * factor * 10)/10}g`;
+      document.getElementById('preview-calc-fats').textContent = `${Math.round(food.fats * factor * 10)/10}g`;
+    }
+  };
+
+  window.saveLoggedFood = async function(e) {
+    e.preventDefault();
+    const date = document.getElementById('modal-log-date').value;
+    const meal_type = document.getElementById('modal-log-meal').value;
+    const foodId = document.getElementById('modal-log-food').value;
+    const weight = parseFloat(document.getElementById('modal-log-weight').value) || 100;
+    const food = macroFoods.find(f => f.id == foodId);
+    if (!food) return;
+
+    const factor = weight / 100;
+    const logEntry = {
+      user_id: currentUser.id,
+      date, meal_type,
+      food_name: food.name, weight,
+      calories: Math.round(food.calories * factor),
+      protein: Math.round(food.protein * factor * 10) / 10,
+      carbs: Math.round(food.carbs * factor * 10) / 10,
+      fats: Math.round(food.fats * factor * 10) / 10
+    };
+
+    const { data } = await supabaseClient.from('macros_logs').insert([logEntry]).select();
+    if (data) macroLogs.push(data[0]);
+
+    closeAddLogModal();
+    renderMacroLogs();
+  };
+
+  window.deleteMacroLog = async function(id) {
+    await supabaseClient.from('macros_logs').delete().eq('id', id);
+    macroLogs = macroLogs.filter(i => i.id !== id);
+    renderMacroLogs();
+  };
+
+  window.openNewFoodModal = function() { document.getElementById('modal-add-food').classList.remove('hidden'); };
+  window.closeNewFoodModal = function() { document.getElementById('modal-add-food').classList.add('hidden'); };
+
+  window.saveNewFoodItem = async function(e) {
+    e.preventDefault();
+    const newFood = {
+      user_id: currentUser.id,
+      name: document.getElementById('modal-food-name').value.trim(),
+      calories: parseFloat(document.getElementById('modal-food-calories').value) || 0,
+      protein: parseFloat(document.getElementById('modal-food-protein').value) || 0,
+      carbs: parseFloat(document.getElementById('modal-food-carbs').value) || 0,
+      fats: parseFloat(document.getElementById('modal-food-fats').value) || 0
+    };
+
+    const { data } = await supabaseClient.from('macros_foods').insert([newFood]).select();
+    if (data) {
+      macroFoods.push(data[0]);
+    } else {
+      macroFoods.push(newFood);
+    }
+
+    // Auto-sort list A-Z after adding new item
+    sortMacroFoodsAlphabetically();
+
+    closeNewFoodModal();
+    renderMacroFoodLibrary();
+  };
+});

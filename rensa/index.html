@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rensa Fitness - Workout & Nutrition Tracker</title>
+  
+  <meta name="theme-color" content="#0b0f19">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Rensa Fitness">
+
+  <!-- SVG Favicon / Apple Touch Icon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%230b0f19'/><g transform='translate(256 220) scale(1.1)' text-anchor='middle'><circle cx='-45' cy='0' r='80' fill='none' stroke='%2322c55e' stroke-width='28'/><circle cx='45' cy='0' r='80' fill='none' stroke='%23a855f7' stroke-width='28'/><path d='M-15 45 Q 10 30 35 -10 L 15 -10 M 35 -10 L 35 10' fill='none' stroke='%2322c55e' stroke-width='22' stroke-linecap='round' stroke-linejoin='round'/></g><text x='256' y='410' font-family='sans-serif' font-size='38' font-weight='900' letter-spacing='6' fill='%23e2e8f0' text-anchor='middle'>RENSA</text><text x='256' y='450' font-family='sans-serif' font-size='22' font-weight='700' letter-spacing='8' fill='%2394a3b8' text-anchor='middle'>FITNESS</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%230b0f19'/><g transform='translate(256 220) scale(1.1)' text-anchor='middle'><circle cx='-45' cy='0' r='80' fill='none' stroke='%2322c55e' stroke-width='28'/><circle cx='45' cy='0' r='80' fill='none' stroke='%23a855f7' stroke-width='28'/><path d='M-15 45 Q 10 30 35 -10 L 15 -10 M 35 -10 L 35 10' fill='none' stroke='%2322c55e' stroke-width='22' stroke-linecap='round' stroke-linejoin='round'/></g><text x='256' y='410' font-family='sans-serif' font-size='38' font-weight='900' letter-spacing='6' fill='%23e2e8f0' text-anchor='middle'>RENSA</text><text x='256' y='450' font-family='sans-serif' font-size='22' font-weight='700' letter-spacing='8' fill='%2394a3b8' text-anchor='middle'>FITNESS</text></svg>">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Auth View -->
+  <div id="auth-view" class="auth-container">
+    <div style="margin-bottom: 16px;">
+      <svg width="96" height="96" viewBox="0 0 512 512" style="filter: drop-shadow(0 8px 16px rgba(34, 197, 94, 0.25));">
+        <rect width="512" height="512" rx="112" fill="#0b0f19" />
+        <circle cx="200" cy="220" r="90" fill="none" stroke="#22c55e" stroke-width="32"/>
+        <circle cx="312" cy="220" r="90" fill="none" stroke="#a855f7" stroke-width="32"/>
+        <path d="M 220 280 Q 260 260 290 200 L 255 200 M 290 200 L 290 235" fill="none" stroke="#22c55e" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="256" y="410" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="38" font-weight="900" letter-spacing="6" fill="#e2e8f0" text-anchor="middle">RENSA</text>
+        <text x="256" y="450" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="22" font-weight="700" letter-spacing="8" fill="#94a3b8" text-anchor="middle">FITNESS</text>
+      </svg>
+    </div>
+
+    <h1>Rensa Fitness</h1>
+    <p>Sign in or create an account</p>
+    <form id="auth-form" class="glass-card">
+      <input type="text" id="username" placeholder="Username (required for Sign Up)">
+      <input type="email" id="email" placeholder="Email Address" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <div class="auth-actions">
+        <button type="button" id="login-btn" class="btn-primary">Login</button>
+        <button type="button" id="signup-btn" class="btn-secondary">Sign Up</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Dashboard Container -->
+  <div id="app-view" class="hidden">
+    <!-- Header -->
+    <div class="app-header">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <svg width="36" height="36" viewBox="0 0 512 512" style="flex-shrink: 0; filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.3));">
+          <rect width="512" height="512" rx="112" fill="#0b0f19"/>
+          <circle cx="200" cy="220" r="90" fill="none" stroke="#22c55e" stroke-width="32"/>
+          <circle cx="312" cy="220" r="90" fill="none" stroke="#a855f7" stroke-width="32"/>
+          <path d="M 220 280 Q 260 260 290 200 L 255 200 M 290 200 L 290 235" fill="none" stroke="#22c55e" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <h2 id="app-title-display">Rensa Pulse</h2>
+          <span class="user-tag" id="user-display"></span>
+        </div>
+      </div>
+      
+      <!-- Right Header Actions -->
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <button id="app-switch-btn" class="btn-switch">⚡ Switch to Nutrition</button>
+          <button class="logout-btn" id="logout-btn">Logout</button>
+        </div>
+        <span class="version-badge">ver 2.0.0</span>
+      </div>
+    </div>
+
+    <!-- ================= RENSA PULSE MODE (WORKOUTS) ================= -->
+    <div id="pulse-mode-container">
+      <div class="nav-tabs">
+        <button class="tab-btn" id="tab-routine">Workout Routine</button>
+        <button class="tab-btn" id="tab-records">PR List</button>
+        <button class="tab-btn" id="tab-chart">History Graph</button>
+      </div>
+
+      <div id="landing-view" class="empty-state" style="padding-top: 60px; min-height: 50vh; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <p style="font-size: 1.1rem; color: #f8fafc; font-weight: 600; margin-bottom: 8px;">Welcome back!</p>
+          <p style="color: #64748b;">Select a tab above to view your workout schedule, track PRs, or view progress graphs.</p>
+        </div>
+        <p class="creator-credit">Created by Alex Filippas</p>
+      </div>
+
+      <div id="routine-view" class="hidden">
+        <div class="day-selector">
+          <div class="day-pill active" onclick="selectDay('Monday')">Mon</div>
+          <div class="day-pill" onclick="selectDay('Tuesday')">Tue</div>
+          <div class="day-pill" onclick="selectDay('Wednesday')">Wed</div>
+          <div class="day-pill" onclick="selectDay('Thursday')">Thu</div>
+          <div class="day-pill" onclick="selectDay('Friday')">Fri</div>
+          <div class="day-pill" onclick="selectDay('Saturday')">Sat</div>
+          <div class="day-pill" onclick="selectDay('Sunday')">Sun</div>
+        </div>
+        <div class="routine-header-row">
+          <div id="routine-title" class="routine-title">Workout Title</div>
+          <button class="btn-icon" onclick="openDayTitleModal()" title="Edit Day Title">✎</button>
+        </div>
+        <div id="routine-container"></div>
+      </div>
+
+      <div id="records-view" class="hidden">
+        <input type="text" id="search-bar" placeholder="Search exercise or muscle group (e.g., Chest)...">
+        <div id="pr-container"></div>
+      </div>
+
+      <div id="chart-view" class="hidden">
+        <select id="chart-select" style="margin-bottom: 16px;">
+          <option value="" disabled selected>Select Exercise to View Graph</option>
+        </select>
+        <div class="glass-card">
+          <canvas id="prChart"></canvas>
+        </div>
+        <div class="history-manager" id="history-manager"></div>
+      </div>
+
+      <button class="fab hidden" id="fab-add" title="Add">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      </button>
+    </div>
+
+    <!-- ================= RENSA MACROS MODE (NUTRITION) ================= -->
+    <div id="macros-mode-container" class="hidden">
+      <div class="nav-tabs">
+        <button class="tab-btn active" id="tab-macro-log" onclick="switchMacroTab('log')"><i class="fa-solid fa-calendar-day"></i> Daily Log</button>
+        <button class="tab-btn" id="tab-macro-library" onclick="switchMacroTab('library')"><i class="fa-solid fa-book-open"></i> Foods</button>
+        <button class="tab-btn" id="tab-macro-settings" onclick="switchMacroTab('settings')"><i class="fa-solid fa-bullseye"></i> Macro Goals</button>
+      </div>
+
+      <!-- Macro Log Tab -->
+      <div id="macro-tab-log" class="macro-tab-content">
+        <div class="glass-card p-4 rounded-2xl flex items-center justify-between gap-2 border border-apex-border" style="margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button onclick="changeMacroDate(-1)" class="btn-icon">◄</button>
+            <input type="date" id="macro-date-picker" onchange="onMacroDateChange(this.value)" class="bg-dark-input text-cyan">
+            <button onclick="changeMacroDate(1)" class="btn-icon">►</button>
+            <button onclick="setMacroToday()" class="btn-secondary" style="padding: 6px 10px; font-size: 0.75rem;">Today</button>
+          </div>
+          <button onclick="openAddLogModal()" class="btn-primary" style="padding: 8px 12px; font-size: 0.8rem;">+ Log Food</button>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl space-y-4" style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
+            <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc;"><i class="fa-solid fa-chart-pie text-cyan"></i> Daily Breakdown</h3>
+            <span id="macro-date-display" style="font-size: 0.78rem; color: #94a3b8;">--</span>
+          </div>
+
+          <div class="macro-grid">
+            <div class="macro-card">
+              <span class="macro-card-title">Calories</span>
+              <span id="sum-cal-consumed" class="macro-val text-cyan">0</span>
+              <span class="macro-sub">/ <span id="sum-cal-target">2000</span> kcal</span>
+              <div class="macro-progress-bg"><div id="bar-cal" class="macro-progress-fill fill-cyan"></div></div>
+            </div>
+            <div class="macro-card">
+              <span class="macro-card-title">Protein</span>
+              <span id="sum-protein-consumed" class="macro-val text-pink">0</span>
+              <span class="macro-sub">/ <span id="sum-protein-target">160</span> g</span>
+              <div class="macro-progress-bg"><div id="bar-protein" class="macro-progress-fill fill-pink"></div></div>
+            </div>
+            <div class="macro-card">
+              <span class="macro-card-title">Carbs</span>
+              <span id="sum-carbs-consumed" class="macro-val text-amber">0</span>
+              <span class="macro-sub">/ <span id="sum-carbs-target">220</span> g</span>
+              <div class="macro-progress-bg"><div id="bar-carbs" class="macro-progress-fill fill-amber"></div></div>
+            </div>
+            <div class="macro-card">
+              <span class="macro-card-title">Fats</span>
+              <span id="sum-fats-consumed" class="macro-val text-emerald">0</span>
+              <span class="macro-sub">/ <span id="sum-fats-target">65</span> g</span>
+              <div class="macro-progress-bg"><div id="bar-fats" class="macro-progress-fill fill-emerald"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="meal-sections-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+      </div>
+
+      <!-- Food Database Tab -->
+      <div id="macro-tab-library" class="macro-tab-content hidden">
+        <div class="glass-card p-4 space-y-3" style="margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-weight: 700; color: #f8fafc;"><i class="fa-solid fa-database text-cyan"></i> Food Database</h3>
+            <button onclick="openNewFoodModal()" class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;">+ New Custom Food</button>
+          </div>
+          <input type="text" id="food-search-input" onkeyup="renderMacroFoodLibrary(this.value)" placeholder="Search food items (e.g., Chicken, Oats)...">
+        </div>
+        <div id="food-library-grid" class="macro-grid"></div>
+      </div>
+
+      <!-- Macro Goals Tab -->
+      <div id="macro-tab-settings" class="macro-tab-content hidden">
+        <div class="glass-card p-4 space-y-3">
+          <h3 style="font-weight: 700; color: #f8fafc; margin-bottom: 12px;"><i class="fa-solid fa-bullseye text-cyan"></i> Daily Macro Goals</h3>
+          <form id="targets-form" onsubmit="saveMacroTargets(event)">
+            <label class="macro-label">Target Calories (kcal)</label>
+            <input type="number" id="target-calories" required>
+            <label class="macro-label">Target Protein (g)</label>
+            <input type="number" id="target-protein" required>
+            <label class="macro-label">Target Carbs (g)</label>
+            <input type="number" id="target-carbs" required>
+            <label class="macro-label">Target Fats (g)</label>
+            <input type="number" id="target-fats" required>
+            <button type="submit" class="btn-primary" style="width: 100%; margin-top: 8px;">Save Macro Goals</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR Form Modal Dialog -->
+  <div id="pr-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title" id="modal-title">Add New PR</div>
+      <form id="pr-form">
+        <input type="hidden" id="edit-id">
+        <div class="input-with-btn">
+          <input type="text" id="exercise" placeholder="Exercise name" autocomplete="off" required>
+          <button type="button" class="btn-secondary open-lib-trigger" title="Browse Library">📋 Menu</button>
+        </div>
+        <div id="pr-suggestion-box" class="suggestion-tooltip hidden"></div>
+        <select id="category" required>
+          <option value="" disabled selected>Muscle Group / Category</option>
+          <option value="Chest">Chest</option>
+          <option value="Back">Back</option>
+          <option value="Legs">Legs</option>
+          <option value="Shoulders">Shoulders</option>
+          <option value="Biceps">Biceps</option>
+          <option value="Triceps">Triceps</option>
+          <option value="Core">Core</option>
+          <option value="Run">Run</option>
+          <option value="Walk">Walk</option>
+          <option value="Trail">Trail</option>
+        </select>
+        <input type="number" id="weight" placeholder="Weight (kg)" step="0.1" min="0" required>
+        <input type="number" id="reps" placeholder="Reps" min="0" required>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary" id="save-btn">Save</button>
+          <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Routine Exercise Modal -->
+  <div id="routine-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title">Add/Edit Routine Exercise</div>
+      <form id="routine-form">
+        <input type="hidden" id="routine-edit-idx">
+        <div class="input-with-btn">
+          <input type="text" id="routine-ex-name" placeholder="Exercise Name" autocomplete="off" required>
+          <button type="button" class="btn-secondary open-lib-trigger" title="Browse Library">📋 Menu</button>
+        </div>
+        <div id="routine-suggestion-box" class="suggestion-tooltip hidden"></div>
+        <select id="routine-ex-group" required>
+          <option value="" disabled selected>Muscle Group / Category</option>
+          <option value="Chest">Chest</option>
+          <option value="Back">Back</option>
+          <option value="Legs">Legs</option>
+          <option value="Shoulders">Shoulders</option>
+          <option value="Biceps">Biceps</option>
+          <option value="Triceps">Triceps</option>
+          <option value="Core">Core</option>
+          <option value="Run">Run</option>
+          <option value="Walk">Walk</option>
+          <option value="Trail">Trail</option>
+        </select>
+        <input type="text" id="routine-ex-sets" placeholder="Sets (e.g., 3 or 1 WU + 3)" required>
+        <input type="text" id="routine-ex-reps" placeholder="Reps / Distance / Duration" required>
+        <input type="text" id="routine-ex-target" placeholder="Target (e.g., Lats, width)">
+        <input type="text" id="routine-ex-rotation" placeholder="Rotation (e.g., T-bar Row)">
+        <input type="text" id="routine-ex-tips" placeholder="Tips (e.g., Pause 1 sec at contraction)">
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Save Exercise</button>
+          <button type="button" class="btn-secondary" id="routine-cancel-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Collapsible Exercise Library Menu Modal -->
+  <div id="library-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title">Exercise Library</div>
+      <div class="modal-subtitle">Tap [+] to expand muscle group</div>
+      <div id="library-accordion"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="library-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day Title Modal -->
+  <div id="day-title-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title">Edit Workout Focus</div>
+      <form id="day-title-form">
+        <input type="text" id="day-title-input" placeholder="e.g., Upper - Chest/Back focus" required>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Save Focus</button>
+          <button type="button" class="btn-secondary" id="day-title-cancel-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Percentage Modal Dialog -->
+  <div id="percent-modal" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title" id="percent-title">Exercise Breakdown</div>
+      <div class="modal-subtitle" id="percent-subtitle">PR Weight Calculations</div>
+      <div id="one-rm-box" class="one-rm-banner"></div>
+      <div class="percent-columns" id="percent-columns"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="percent-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rensa Macros Modals -->
+  <div id="modal-add-log" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title"><i class="fa-solid fa-plus-circle text-cyan"></i> <span id="modal-log-title">Add Food Entry</span></div>
+      <form id="form-add-log" onsubmit="saveLoggedFood(event)">
+        <div style="display: flex; gap: 8px;">
+          <input type="date" id="modal-log-date" required style="flex:1;">
+          <select id="modal-log-meal" required style="flex:1;">
+            <option value="Breakfast">Breakfast</option>
+            <option value="Brunch">Brunch</option>
+            <option value="Lunch">Lunch</option>
+            <option value="Snack">Snack</option>
+            <option value="Afternoon">Afternoon</option>
+            <option value="Dinner">Dinner</option>
+          </select>
+        </div>
+        <select id="modal-log-food" onchange="updateModalCalculations()" required></select>
+        <input type="number" id="modal-log-weight" value="100" min="1" oninput="updateModalCalculations()" placeholder="Weight in Grams" required>
+
+        <div style="background: rgba(15, 23, 42, 0.8); padding: 10px; border-radius: 10px; margin-bottom: 12px; font-size: 0.8rem;">
+          <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Calculated Totals</div>
+          <div style="display: flex; justify-content: space-between; margin-top: 4px; font-weight: 700;">
+            <span class="text-cyan"><span id="preview-calc-cal">0</span> kcal</span>
+            <span class="text-pink">P: <span id="preview-calc-protein">0g</span></span>
+            <span class="text-amber">C: <span id="preview-calc-carbs">0g</span></span>
+            <span class="text-emerald">F: <span id="preview-calc-fats">0g</span></span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Save Entry</button>
+          <button type="button" class="btn-secondary" onclick="closeAddLogModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-add-food" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title"><i class="fa-solid fa-database text-pink"></i> Create Food Item (per 100g)</div>
+      <form id="form-add-food" onsubmit="saveNewFoodItem(event)">
+        <input type="text" id="modal-food-name" placeholder="e.g., Chicken Breast Cooked" required>
+        <input type="number" step="0.1" id="modal-food-calories" placeholder="Calories (kcal)" required>
+        <input type="number" step="0.1" id="modal-food-protein" placeholder="Protein (g)" required>
+        <input type="number" step="0.1" id="modal-food-carbs" placeholder="Carbs (g)" required>
+        <input type="number" step="0.1" id="modal-food-fats" placeholder="Fats (g)" required>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Save Food Item</button>
+          <button type="button" class="btn-secondary" onclick="closeNewFoodModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

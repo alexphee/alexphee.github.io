@@ -1,8 +1,7 @@
 {
-"name": "ApexPulse - Workout & PR Tracker",
-"short_name": "ApexPulse",
-"description": "Track workout routines, personal records, and
-progress history.",
+"name": "Rensa Fitness - Workout & Macros Tracker",
+"short_name": "Rensa",
+"description": "Connected actions. Unstoppable gains.",
 "start_url": "./",
 "scope": "./",
 "display": "standalone",
