@@ -10,9 +10,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Rensa Fitness">
 
-  <!-- SVG Favicon / Apple Touch Icon -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%230b0f19'/><g transform='translate(256 220) scale(1.1)' text-anchor='middle'><circle cx='-45' cy='0' r='80' fill='none' stroke='%2322c55e' stroke-width='28'/><circle cx='45' cy='0' r='80' fill='none' stroke='%23a855f7' stroke-width='28'/><path d='M-15 45 Q 10 30 35 -10 L 15 -10 M 35 -10 L 35 10' fill='none' stroke='%2322c55e' stroke-width='22' stroke-linecap='round' stroke-linejoin='round'/></g><text x='256' y='410' font-family='sans-serif' font-size='38' font-weight='900' letter-spacing='6' fill='%23e2e8f0' text-anchor='middle'>RENSA</text><text x='256' y='450' font-family='sans-serif' font-size='22' font-weight='700' letter-spacing='8' fill='%2394a3b8' text-anchor='middle'>FITNESS</text></svg>">
-  <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%230b0f19'/><g transform='translate(256 220) scale(1.1)' text-anchor='middle'><circle cx='-45' cy='0' r='80' fill='none' stroke='%2322c55e' stroke-width='28'/><circle cx='45' cy='0' r='80' fill='none' stroke='%23a855f7' stroke-width='28'/><path d='M-15 45 Q 10 30 35 -10 L 15 -10 M 35 -10 L 35 10' fill='none' stroke='%2322c55e' stroke-width='22' stroke-linecap='round' stroke-linejoin='round'/></g><text x='256' y='410' font-family='sans-serif' font-size='38' font-weight='900' letter-spacing='6' fill='%23e2e8f0' text-anchor='middle'>RENSA</text><text x='256' y='450' font-family='sans-serif' font-size='22' font-weight='700' letter-spacing='8' fill='%2394a3b8' text-anchor='middle'>FITNESS</text></svg>">
+  <!-- Favicon (Cropped Image) -->
+  <link rel="icon" type="image/jpeg" href="rensa-2.jpeg">
+
+  <!-- Apple iOS Home Screen Bookmark Icon -->
+  <link rel="apple-touch-icon" href="rensa.jpeg">
 
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,14 +31,7 @@
   <!-- Auth View -->
   <div id="auth-view" class="auth-container">
     <div style="margin-bottom: 16px;">
-      <svg width="96" height="96" viewBox="0 0 512 512" style="filter: drop-shadow(0 8px 16px rgba(34, 197, 94, 0.25));">
-        <rect width="512" height="512" rx="112" fill="#0b0f19" />
-        <circle cx="200" cy="220" r="90" fill="none" stroke="#22c55e" stroke-width="32"/>
-        <circle cx="312" cy="220" r="90" fill="none" stroke="#a855f7" stroke-width="32"/>
-        <path d="M 220 280 Q 260 260 290 200 L 255 200 M 290 200 L 290 235" fill="none" stroke="#22c55e" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
-        <text x="256" y="410" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="38" font-weight="900" letter-spacing="6" fill="#e2e8f0" text-anchor="middle">RENSA</text>
-        <text x="256" y="450" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="22" font-weight="700" letter-spacing="8" fill="#94a3b8" text-anchor="middle">FITNESS</text>
-      </svg>
+      <img src="rensa-2.jpeg" alt="Rensa Fitness Logo" width="96" height="96" style="border-radius: 20px; box-shadow: 0 8px 20px rgba(34, 197, 94, 0.25);">
     </div>
 
     <h1>Rensa Fitness</h1>
@@ -57,12 +52,7 @@
     <!-- Header -->
     <div class="app-header">
       <div style="display: flex; align-items: center; gap: 10px;">
-        <svg width="36" height="36" viewBox="0 0 512 512" style="flex-shrink: 0; filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.3));">
-          <rect width="512" height="512" rx="112" fill="#0b0f19"/>
-          <circle cx="200" cy="220" r="90" fill="none" stroke="#22c55e" stroke-width="32"/>
-          <circle cx="312" cy="220" r="90" fill="none" stroke="#a855f7" stroke-width="32"/>
-          <path d="M 220 280 Q 260 260 290 200 L 255 200 M 290 200 L 290 235" fill="none" stroke="#22c55e" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <img src="rensa-2.jpeg" alt="Rensa Logo" width="36" height="36" style="border-radius: 8px; flex-shrink: 0;">
         <div>
           <h2 id="app-title-display">Rensa Pulse</h2>
           <span class="user-tag" id="user-display"></span>

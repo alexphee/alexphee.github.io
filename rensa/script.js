@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
       pulseContainer.classList.add('hidden');
       macrosContainer.classList.remove('hidden');
       titleDisplay.textContent = 'Rensa Macros';
-      appSwitchBtn.textContent = '🏋️ Switch to Workout Routine';
+      appSwitchBtn.textContent = '🏋️ Switch to Workout';
       loadMacroData();
     } else {
       macrosContainer.classList.add('hidden');
