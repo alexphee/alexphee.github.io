@@ -863,21 +863,34 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.renderMacroFoodLibrary = function(searchTerm = '') {
-    const grid = document.getElementById('food-library-grid');
-    grid.innerHTML = '';
+    const listContainer = document.getElementById('food-library-list');
+    listContainer.innerHTML = '';
     
     sortMacroFoodsAlphabetically();
     const filtered = macroFoods.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
+    if (filtered.length === 0) {
+      listContainer.innerHTML = '<div class="empty-state">No matching food items found.</div>';
+      return;
+    }
+
     filtered.forEach(food => {
-      const card = document.createElement('div');
-      card.className = 'macro-card space-y-1';
-      card.innerHTML = `
-        <div style="font-weight:700; color:#f8fafc; font-size:0.85rem;">${food.name}</div>
-        <div style="font-size:0.75rem; color:#00f0ff;">${food.calories} kcal / 100g</div>
-        <div style="font-size:0.7rem; color:#94a3b8;">P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fats}g</div>
+      const item = document.createElement('div');
+      item.className = 'food-list-item';
+      item.innerHTML = `
+        <div class="food-item-header">
+          <span class="food-item-name">${food.name}</span>
+          <span class="food-item-cal">${food.calories} kcal / 100g</span>
+        </div>
+        <div class="food-item-macros">
+          <span class="food-macro-pill text-pink">P: ${food.protein}g</span>
+          <span>•</span>
+          <span class="food-macro-pill text-amber">C: ${food.carbs}g</span>
+          <span>•</span>
+          <span class="food-macro-pill text-emerald">F: ${food.fats}g</span>
+        </div>
       `;
-      grid.appendChild(card);
+      listContainer.appendChild(item);
     });
   };
 
@@ -979,4 +992,69 @@ document.addEventListener('DOMContentLoaded', () => {
     closeNewFoodModal();
     renderMacroFoodLibrary();
   };
+
+  // OCR Label Scanning Handlers
+  window.triggerCameraScan = function() {
+    document.getElementById('scan-camera-input').click();
+  };
+
+  window.processLabelImage = function(inputEl) {
+    if (!inputEl.files || !inputEl.files[0]) return;
+
+    const file = inputEl.files[0];
+    const banner = document.getElementById('scan-status-banner');
+    const statusText = document.getElementById('scan-status-text');
+
+    banner.classList.remove('hidden');
+    statusText.textContent = "Analyzing nutrition label...";
+
+    Tesseract.recognize(file, 'eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          statusText.textContent = `Scanning: ${Math.round(m.progress * 100)}%`;
+        }
+      }
+    }).then(({ data: { text } }) => {
+      banner.classList.add('hidden');
+      parseAndAutofillNutrition(text);
+    }).catch(err => {
+      console.error("OCR Scan Error:", err);
+      banner.classList.add('hidden');
+      alert("Could not read nutrition label. Please type values manually.");
+    });
+  };
+
+  function parseAndAutofillNutrition(ocrText) {
+    const lines = ocrText.toLowerCase();
+
+    const calMatch = lines.match(/(?:energy|calories|kcal)\s*[:\-\s]?\s*(\d+(?:\.\d+)?)/i);
+    const proteinMatch = lines.match(/(?:protein|proteins)\s*[:\-\s]?\s*(\d+(?:\.\d+)?)/i);
+    const carbMatch = lines.match(/(?:carbohydrate|carbohydrates|carbs)\s*[:\-\s]?\s*(\d+(?:\.\d+)?)/i);
+    const fatMatch = lines.match(/(?:fat|fats|total fat)\s*[:\-\s]?\s*(\d+(?:\.\d+)?)/i);
+
+    let filledCount = 0;
+
+    if (calMatch && calMatch[1]) {
+      document.getElementById('modal-food-calories').value = parseFloat(calMatch[1]);
+      filledCount++;
+    }
+    if (proteinMatch && proteinMatch[1]) {
+      document.getElementById('modal-food-protein').value = parseFloat(proteinMatch[1]);
+      filledCount++;
+    }
+    if (carbMatch && carbMatch[1]) {
+      document.getElementById('modal-food-carbs').value = parseFloat(carbMatch[1]);
+      filledCount++;
+    }
+    if (fatMatch && fatMatch[1]) {
+      document.getElementById('modal-food-fats').value = parseFloat(fatMatch[1]);
+      filledCount++;
+    }
+
+    if (filledCount > 0) {
+      alert(`Label scanned! Auto-filled ${filledCount} field(s). Please verify values before saving.`);
+    } else {
+      alert("Could not detect macro values clearly. Please verify the label orientation and type values manually.");
+    }
+  }
 });
