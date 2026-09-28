@@ -1024,37 +1024,105 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  function parseAndAutofillNutrition(ocrText) {
-    const lines = ocrText.toLowerCase();
+function parseAndAutofillNutrition(ocrText) {
+  // Replace Greek commas with dots, convert to lowercase for easy matching
+  const cleanedText = ocrText
+    .replace(/(\d+),(\d+)/g, '$1.$2') // Convert "2,1g" -> "2.1g"
+    .replace(/[|,;]/g, '.')
+    .toLowerCase();
 
-    const calMatch = lines.match(/(?:energy|calories|kcal)\s*[:\-\s]?\s*(\d+(?:\.\d+)?)/i);
-    const proteinMatch = lines.match(/(?:protein|proteins)\s*[:\-\s]?\s*(\d+(?:\.\d+)?)/i);
-    const carbMatch = lines.match(/(?:carbohydrate|carbohydrates|carbs)\s*[:\-\s]?\s*(\d+(?:\.\d+)?)/i);
-    const fatMatch = lines.match(/(?:fat|fats|total fat)\s*[:\-\s]?\s*(\d+(?:\.\d+)?)/i);
+  const lines = cleanedText.split('\n');
 
-    let filledCount = 0;
+  let foundCal = null;
+  let foundFat = null;
+  let foundCarbs = null;
+  let foundProtein = null;
 
-    if (calMatch && calMatch[1]) {
-      document.getElementById('modal-food-calories').value = parseFloat(calMatch[1]);
-      filledCount++;
-    }
-    if (proteinMatch && proteinMatch[1]) {
-      document.getElementById('modal-food-protein').value = parseFloat(proteinMatch[1]);
-      filledCount++;
-    }
-    if (carbMatch && carbMatch[1]) {
-      document.getElementById('modal-food-carbs').value = parseFloat(carbMatch[1]);
-      filledCount++;
-    }
-    if (fatMatch && fatMatch[1]) {
-      document.getElementById('modal-food-fats').value = parseFloat(fatMatch[1]);
-      filledCount++;
+  // Greek & English Keywords
+  const greekPatterns = {
+    // Energy: Capture numbers right before 'kcal'
+    cal: /(?:ενέργεια|energy|ενεργεια)\D*(\d+)\s*kj\s*\/\s*(\d+)\s*kcal/i,
+    calFallback: /(\d+)\s*kcal/i,
+
+    // Fat: 'λιπαρά' or 'fat'
+    fat: /(?:λιπαρά|λιπαρα|fat)\D*(\d+(?:\.\d+)?)\s*g?/i,
+
+    // Carbs: 'υδατάνθρακες' or 'carbohydrate'
+    carbs: /(?:υδατάνθρακες|υδατανθρακες|carbohydrate|carbs)\D*(\d+(?:\.\d+)?)\s*g?/i,
+
+    // Protein: 'πρωτεΐνες' or 'protein'
+    protein: /(?:πρωτεΐνες|πρωτεινες|protein)\D*(\d+(?:\.\d+)?)\s*g?/i
+  };
+
+  for (let line of lines) {
+    // Skip 'εκ των οποίων' / 'of which' sub-rows (Saturates/Sugars)
+    if (line.includes('οποίων') || line.includes('opoion') || line.includes('which')) {
+      continue;
     }
 
-    if (filledCount > 0) {
+    // 1. Calories (Extract the kcal value from '1424kJ/337kcal')
+    if (foundCal === null) {
+      const match = line.match(greekPatterns.cal) || line.match(greekPatterns.calFallback);
+      if (match) {
+        // If dual match (kJ / kcal), take the kcal group
+        const val = parseFloat(match[2] || match[1]);
+        if (val < 1000) foundCal = val;
+      }
+    }
+
+    // 2. Fat (Ensure we pick 100g column, first number after keyword)
+    if (foundFat === null && (line.includes('λιπαρ') || line.includes('fat'))) {
+      const match = line.match(greekPatterns.fat);
+      if (match) {
+        const val = parseFloat(match[1]);
+        if (val <= 100) foundFat = val;
+      }
+    }
+
+    // 3. Carbohydrates
+    if (foundCarbs === null && (line.includes('υδατ') || line.includes('carb'))) {
+      const match = line.match(greekPatterns.carbs);
+      if (match) {
+        const val = parseFloat(match[1]);
+        if (val <= 100) foundCarbs = val;
+      }
+    }
+
+    // 4. Protein
+    if (foundProtein === null && (line.includes('πρωτ') || line.includes('protein'))) {
+      const match = line.match(greekPatterns.protein);
+      if (match) {
+        const val = parseFloat(match[1]);
+        if (val <= 100) foundProtein = val;
+      }
+    }
+  }
+
+  let filledCount = 0;
+
+  if (foundCal !== null) {
+    document.getElementById('modal-food-calories').value = foundCal;
+    filledCount++;
+  }
+  if (foundProtein !== null) {
+    document.getElementById('modal-food-protein').value = foundProtein;
+    filledCount++;
+  }
+  if (foundCarbs !== null) {
+    document.getElementById('modal-food-carbs').value = foundCarbs;
+    filledCount++;
+  }
+  if (foundFat !== null) {
+    document.getElementById('modal-food-fats').value = foundFat;
+    filledCount++;
+  }
+
+      if (filledCount > 0) {
       alert(`Label scanned! Auto-filled ${filledCount} field(s). Please verify values before saving.`);
     } else {
       alert("Could not detect macro values clearly. Please verify the label orientation and type values manually.");
     }
-  }
+}
 });
+
+
