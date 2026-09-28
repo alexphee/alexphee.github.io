@@ -166,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const routineView = document.getElementById('routine-view');
   const chartView = document.getElementById('chart-view');
   const chartSelect = document.getElementById('chart-select');
-  const historyManager = document.getElementById('history-manager');
 
   const prModal = document.getElementById('pr-modal');
   const prForm = document.getElementById('pr-form');
@@ -224,6 +223,106 @@ document.addEventListener('DOMContentLoaded', () => {
       appSwitchBtn.textContent = '⚡ Switch to Nutrition';
     }
   }
+
+  // Bind Menu Triggers for Accordion Library
+  document.querySelectorAll('.open-lib-trigger').forEach(btn => {
+    btn.onclick = (e) => {
+      const isPR = e.target.closest('#pr-modal') !== null;
+      libraryTargetContext = isPR ? 'pr' : 'routine';
+      renderLibraryAccordion();
+      libraryModal.classList.remove('hidden');
+    };
+  });
+
+  libraryCloseBtn.onclick = () => libraryModal.classList.add('hidden');
+
+  function renderLibraryAccordion() {
+    libraryAccordion.innerHTML = '';
+    const groups = ["Chest", "Back", "Legs", "Shoulders", "Biceps", "Triceps", "Core", "Run", "Walk", "Trail"];
+
+    groups.forEach(groupName => {
+      const items = localLibrary
+        .filter(item => item.group_name === groupName)
+        .sort((a, b) => a.exercise.localeCompare(b.exercise));
+
+      if (items.length === 0) return;
+
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'accordion-group';
+
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'accordion-header';
+      headerDiv.innerHTML = `<span>${groupName} (${items.length})</span> <span class="acc-icon">[+]</span>`;
+
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'accordion-content';
+
+      items.forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'accordion-item';
+        itemDiv.textContent = item.exercise;
+        itemDiv.onclick = () => {
+          if (libraryTargetContext === 'pr') {
+            prExInput.value = item.exercise;
+            categorySelect.value = item.group_name;
+          } else {
+            routineExName.value = item.exercise;
+            document.getElementById('routine-ex-group').value = item.group_name;
+          }
+          libraryModal.classList.add('hidden');
+        };
+        contentDiv.appendChild(itemDiv);
+      });
+
+      headerDiv.onclick = () => {
+        const isOpen = contentDiv.classList.contains('open');
+        contentDiv.classList.toggle('open', !isOpen);
+        headerDiv.querySelector('.acc-icon').textContent = isOpen ? '[+]' : '[-]';
+      };
+
+      groupDiv.appendChild(headerDiv);
+      groupDiv.appendChild(contentDiv);
+      libraryAccordion.appendChild(groupDiv);
+    });
+  }
+
+  // Percent Modal Calculations & Display
+  window.showPercentages = function(id) {
+    const pr = localPRs.find(p => p.id === id);
+    if (!pr) return;
+
+    const isCardio = ['Run', 'Walk', 'Trail'].includes(pr.category);
+    percentTitle.textContent = pr.exercise;
+
+    if (isCardio) {
+      percentSubtitle.textContent = `Best: ${pr.weight} km in ${pr.reps} min`;
+      oneRmBox.textContent = `Pace: ~${(pr.reps / pr.weight).toFixed(2)} min/km`;
+    } else {
+      percentSubtitle.textContent = `100% PR = ${pr.weight} kg (${pr.reps} reps)`;
+      const est1RM = pr.reps === 1 ? pr.weight : Math.round(pr.weight * (1 + pr.reps / 30));
+      oneRmBox.textContent = `Est. 1-Rep Max (1RM): ~${est1RM} kg`;
+    }
+
+    const percentages = [];
+    for (let pct = 95; pct >= 50; pct -= 5) percentages.push(pct);
+
+    const renderColumn = (pctList) => {
+      return pctList.map(pct => {
+        const calculatedVal = ((pr.weight * pct) / 100).toFixed(1);
+        const unit = isCardio ? 'km' : 'kg';
+        return `<div class="percent-row"><span>${pct}%</span><span>${parseFloat(calculatedVal)} ${unit}</span></div>`;
+      }).join('');
+    };
+
+    percentColumns.innerHTML = `
+      <div class="percent-col">${renderColumn(percentages.filter(p => p >= 75))}</div>
+      <div class="percent-col">${renderColumn(percentages.filter(p => p < 75))}</div>
+    `;
+
+    percentModal.classList.remove('hidden');
+  };
+
+  percentCloseBtn.onclick = () => percentModal.classList.add('hidden');
 
   // Auth Handling
   if (loginBtn) {
@@ -518,7 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   routineCancelBtn.onclick = () => routineModal.classList.add('hidden');
 
-  function openModal(pr = null) {
+  window.openModal = function(pr = null) {
     prForm.reset();
     prSuggestionBox.classList.add('hidden');
 
@@ -535,7 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
       categorySelect.selectedIndex = 0;
     }
     prModal.classList.remove('hidden');
-  }
+  };
 
   cancelBtn.onclick = () => prModal.classList.add('hidden');
 
@@ -617,7 +716,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.editPr = (id) => {
     const pr = localPRs.find(p => p.id === id);
-    if (pr) openModal(pr);
+    if (pr) window.openModal(pr);
   };
 
   window.deletePr = async (id) => {
@@ -684,7 +783,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const { data: foodData } = await supabaseClient.from('macros_foods').select('*');
     macroFoods = (foodData && foodData.length > 0) ? foodData : defaultMacroFoods;
 
-    // Automatic A-Z Alphabetical Sort for Foods
     sortMacroFoodsAlphabetically();
 
     const { data: logData } = await supabaseClient.from('macros_logs').select('*').eq('date', macroSelectedDate);
@@ -694,7 +792,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMacroFoodLibrary();
   }
 
-  // Alphabetical Food List Sorter Helper
   function sortMacroFoodsAlphabetically() {
     macroFoods.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   }
@@ -769,9 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('food-library-grid');
     grid.innerHTML = '';
     
-    // Sort A-Z before rendering
     sortMacroFoodsAlphabetically();
-    
     const filtered = macroFoods.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     filtered.forEach(food => {
@@ -880,9 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
       macroFoods.push(newFood);
     }
 
-    // Auto-sort list A-Z after adding new item
     sortMacroFoodsAlphabetically();
-
     closeNewFoodModal();
     renderMacroFoodLibrary();
   };
