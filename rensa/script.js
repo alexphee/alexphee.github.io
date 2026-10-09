@@ -886,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-// Copy Meals Helper (Fixed State Sync)
+// Copy Meals Helper (Fixed Supabase UUID Error)
   window.copyCurrentDayMeals = async function() {
     if (macroLogs.length === 0) {
       alert("No meals logged for the currently selected date to copy.");
@@ -896,35 +896,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetDate = prompt("Enter target date to copy these meals to (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
     if (!targetDate) return;
 
-    const copyInserts = macroLogs.map(l => ({
-      id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-      user_id: currentUser ? currentUser.id : 'local',
-      date: targetDate,
-      meal_type: l.meal_type,
-      food_name: l.food_name,
-      weight: l.weight,
-      calories: l.calories,
-      protein: l.protein,
-      carbs: l.carbs,
-      fats: l.fats
-    }));
-
     if (currentUser) {
+      // For Supabase: Omit 'id' so Supabase auto-generates a valid UUID
+      const copyInserts = macroLogs.map(l => ({
+        user_id: currentUser.id,
+        date: targetDate,
+        meal_type: l.meal_type,
+        food_name: l.food_name,
+        weight: l.weight,
+        calories: l.calories,
+        protein: l.protein,
+        carbs: l.carbs,
+        fats: l.fats
+      }));
+
       const { error } = await supabaseClient.from('macros_logs').insert(copyInserts);
       if (error) {
         console.error("Error copying meals to Supabase:", error);
-        alert("Failed to copy meals. Please check your network connection.");
+        alert("Failed to copy meals: " + error.message);
         return;
       }
     } else {
+      // For Local Storage offline mode
+      const copyInserts = macroLogs.map(l => ({
+        id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        user_id: 'local',
+        date: targetDate,
+        meal_type: l.meal_type,
+        food_name: l.food_name,
+        weight: l.weight,
+        calories: l.calories,
+        protein: l.protein,
+        carbs: l.carbs,
+        fats: l.fats
+      }));
+
       let allLogs = JSON.parse(localStorage.getItem('rensa_macro_logs')) || [];
       allLogs = [...allLogs, ...copyInserts];
       localStorage.setItem('rensa_macro_logs', JSON.stringify(allLogs));
     }
 
-    alert(`Successfully copied ${copyInserts.length} meal item(s) to ${targetDate}!`);
+    alert(`Successfully copied ${macroLogs.length} meal item(s) to ${targetDate}!`);
 
-    // Automatically switch view to the target date & re-fetch fresh logs
+    // Switch view to target date & reload logs
     macroSelectedDate = targetDate;
     document.getElementById('macro-date-picker').value = targetDate;
     await loadMacroData();
