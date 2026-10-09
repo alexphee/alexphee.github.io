@@ -251,3 +251,42 @@ li { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.
 .fill-amber { background: #f59e0b; }
 .fill-emerald { background: #10b981; }
 .macro-label { font-size: 0.75rem; color: #94a3b8; font-weight: 600; display: block; margin-bottom: 4px; }
+
+/* Superset & Circuit Grouping */
+.superset-group {
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.superset-badge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.superset-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #a855f7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(168, 85, 247, 0.15);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.superset-group .routine-card {
+  margin-bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}

@@ -1125,4 +1125,172 @@ function parseAndAutofillNutrition(ocrText) {
 }
 });
 
+// Render Routine Day with Grouped Supersets & Circuits
+function renderRoutineDay(dayName) {
+  const dayData = localRoutines[dayName];
+  const titleEl = document.getElementById('routine-title');
+  const containerEl = document.getElementById('routine-container');
 
+  titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
+  containerEl.innerHTML = '';
+
+  if (!dayData || !dayData.exercises || !dayData.exercises.length) {
+    containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
+    return;
+  }
+
+  // Helper function to build routine card HTML
+  const buildCardElement = (ex, idx) => {
+    const dotClass = getGroupDotClass(ex.muscleGroup);
+    const card = document.createElement('div');
+    card.className = 'routine-card';
+    card.draggable = true;
+    card.dataset.index = idx;
+
+    card.innerHTML = `
+      <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+      <span class="routine-num">${idx + 1}.</span>
+      <div class="routine-card-content">
+        <div class="routine-card-header">
+          <span class="routine-card-title">${ex.exercise}</span>
+          <span class="badge">${ex.sets} sets × ${ex.reps}</span>
+        </div>
+        ${ex.superset ? `<div class="routine-card-sub" style="color:#a855f7;">🔗 Superset ${ex.superset}</div>` : ''}
+        ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
+        ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
+        
+        <div class="routine-card-footer">
+          <div class="routine-card-footer-left">
+            <span class="group-square-badge ${dotClass}"></span>
+            <span>${ex.muscleGroup || 'General'} ${ex.target ? '• ' + ex.target : ''}</span>
+          </div>
+        </div>
+      </div>
+      <div class="actions" style="flex-direction: column; align-items: center; justify-content: center;">
+        <button class="btn-icon" style="width:24px; height:24px; margin-bottom: 4px;" onclick="openRoutineModal(${idx})">✎</button>
+        <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteRoutineExercise(${idx})">✕</button>
+      </div>
+    `;
+
+    // Mobile Drag & Drop Events
+    const handleEl = card.querySelector('.drag-handle');
+    handleEl.addEventListener('touchstart', () => {
+      draggedCardIndex = idx;
+      card.classList.add('dragging');
+    }, { passive: true });
+
+    handleEl.addEventListener('touchmove', (e) => {
+      if (draggedCardIndex === null) return;
+      const touch = e.touches[0];
+      const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (!targetEl) return;
+
+      const targetCard = targetEl.closest('.routine-card');
+      if (targetCard && targetCard !== card) {
+        const allCards = Array.from(containerEl.querySelectorAll('.routine-card'));
+        const targetIndex = allCards.indexOf(targetCard);
+        const currentIndex = allCards.indexOf(card);
+
+        if (targetIndex !== -1 && currentIndex !== -1 && targetIndex !== currentIndex) {
+          if (targetIndex > currentIndex) {
+            containerEl.insertBefore(card, targetCard.nextSibling);
+          } else {
+            containerEl.insertBefore(card, targetCard);
+          }
+        }
+      }
+    }, { passive: true });
+
+    handleEl.addEventListener('touchend', async () => {
+      card.classList.remove('dragging');
+      if (draggedCardIndex !== null) {
+        const allCards = Array.from(containerEl.querySelectorAll('.routine-card'));
+        const originalList = [...localRoutines[selectedDayName].exercises];
+        const newList = [];
+
+        allCards.forEach((cEl) => {
+          const origIdx = parseInt(cEl.dataset.index, 10);
+          if (originalList[origIdx]) newList.push(originalList[origIdx]);
+        });
+
+        localRoutines[selectedDayName].exercises = newList;
+        draggedCardIndex = null;
+        await saveRoutineDayToSupabase(selectedDayName);
+        renderRoutineDay(selectedDayName);
+      }
+    });
+
+    return card;
+  };
+
+  // Group items by Superset while maintaining sequence
+  let i = 0;
+  while (i < dayData.exercises.length) {
+    const ex = dayData.exercises[i];
+
+    if (ex.superset) {
+      const groupTag = ex.superset;
+      const groupWrapper = document.createElement('div');
+      groupWrapper.className = 'superset-group';
+      groupWrapper.innerHTML = `
+        <div class="superset-badge-header">
+          <span class="superset-tag"><i class="fa-solid fa-link"></i> SUPERSET ${groupTag}</span>
+          <span style="font-size:0.7rem; color:#94a3b8;">Perform Back-To-Back</span>
+        </div>
+      `;
+
+      while (i < dayData.exercises.length && dayData.exercises[i].superset === groupTag) {
+        groupWrapper.appendChild(buildCardElement(dayData.exercises[i], i));
+        i++;
+      }
+      containerEl.appendChild(groupWrapper);
+    } else {
+      containerEl.appendChild(buildCardElement(ex, i));
+      i++;
+    }
+  }
+}
+
+// Open Routine Modal (Updated with Superset Support)
+window.openRoutineModal = function(editIdx = null) {
+  routineForm.reset();
+  routineSuggestionBox.classList.add('hidden');
+  document.getElementById('routine-edit-idx').value = editIdx !== null ? editIdx : '';
+
+  if (editIdx !== null && localRoutines[selectedDayName] && localRoutines[selectedDayName].exercises[editIdx]) {
+    const ex = localRoutines[selectedDayName].exercises[editIdx];
+    routineExName.value = ex.exercise || '';
+    document.getElementById('routine-ex-group').value = ex.muscleGroup || 'Chest';
+    document.getElementById('routine-ex-sets').value = ex.sets || '';
+    document.getElementById('routine-ex-reps').value = ex.reps || '';
+    document.getElementById('routine-ex-target').value = ex.target || '';
+    document.getElementById('routine-ex-rotation').value = ex.rotation || '';
+    document.getElementById('routine-ex-tips').value = ex.tips || '';
+    document.getElementById('routine-ex-superset').value = ex.superset || '';
+  }
+
+  routineModal.classList.remove('hidden');
+};
+
+// Form Submission for Routine Exercise
+routineForm.onsubmit = async (e) => {
+  e.preventDefault();
+  const editIdx = document.getElementById('routine-edit-idx').value;
+  const exercise = routineExName.value.trim();
+  const muscleGroup = document.getElementById('routine-ex-group').value;
+  const sets = document.getElementById('routine-ex-sets').value.trim();
+  const reps = document.getElementById('routine-ex-reps').value.trim();
+  const target = document.getElementById('routine-ex-target').value.trim();
+  const rotation = document.getElementById('routine-ex-rotation').value.trim();
+  const tips = document.getElementById('routine-ex-tips').value.trim();
+  const superset = document.getElementById('routine-ex-superset').value;
+
+  const newObj = { exercise, muscleGroup, sets, reps, target, rotation, tips, superset };
+
+  if (editIdx !== '') localRoutines[selectedDayName].exercises[editIdx] = newObj;
+  else localRoutines[selectedDayName].exercises.push(newObj);
+
+  await saveRoutineDayToSupabase(selectedDayName);
+  routineModal.classList.add('hidden');
+  renderRoutineDay(selectedDayName);
+};
