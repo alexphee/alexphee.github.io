@@ -84,12 +84,14 @@ button {
   padding: 12px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s ease, border-color 0.15s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
 }
+button:active { transform: scale(0.96); }
+
 .auth-actions { display: flex; gap: 8px; margin-top: 4px; }
 .auth-actions button { flex: 1; }
 .btn-primary {
@@ -133,7 +135,7 @@ button {
 }
 .tab-btn.active { background: #22c55e; color: #0b0f19; font-weight: 800; }
 
-/* Color-Coded Muscle Group Badges */
+/* Muscle Group Badges */
 .group-square-badge { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex-shrink: 0; box-shadow: 0 0 8px currentColor; }
 .dot-chest { background-color: #ef4444; color: #ef4444; }
 .dot-back { background-color: #3b82f6; color: #3b82f6; }
@@ -167,7 +169,8 @@ li { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.
 .btn-icon.del:hover { background: rgba(239, 68, 68, 0.2); color: #f87171; }
 
 .day-selector { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; scrollbar-width: none; }
-.day-pill { padding: 6px 12px; background: #1e293b; border-radius: 20px; font-size: 0.8rem; color: #94a3b8; white-space: nowrap; cursor: pointer; }
+.day-pill { padding: 6px 12px; background: #1e293b; border-radius: 20px; font-size: 0.8rem; color: #94a3b8; white-space: nowrap; cursor: pointer; transition: transform 0.15s ease; }
+.day-pill:active { transform: scale(0.95); }
 .day-pill.active { background: #22c55e; color: #0b0f19; font-weight: 800; }
 
 .routine-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -183,6 +186,45 @@ li { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.
 .routine-card-title { font-weight: 700; font-size: 0.95rem; color: #f8fafc; }
 .routine-card-sub { font-size: 0.78rem; color: #38bdf8; margin-top: 4px; }
 .routine-card-tips { font-size: 0.75rem; color: #a855f7; margin-top: 4px; font-style: italic; }
+
+/* Superset & Circuit Styling */
+.superset-group {
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.superset-badge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.superset-tag {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #a855f7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(168, 85, 247, 0.15);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.superset-group .routine-card {
+  margin-bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
 
 .input-with-btn { display: flex; gap: 6px; margin-bottom: 12px; }
 .input-with-btn input { margin-bottom: 0; flex: 1; }
@@ -223,17 +265,26 @@ li { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.
 .version-badge { font-size: 0.68rem; color: #64748b; font-weight: 700; }
 .creator-credit { font-size: 0.8rem; color: #475569; font-weight: 600; padding-bottom: 16px; }
 
-/* Food Database List Styling */
+/* Food List */
 .food-list { display: flex; flex-direction: column; gap: 8px; }
 .food-list-item { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; transition: border-color 0.2s ease, background-color 0.2s ease; }
 .food-list-item:hover { border-color: rgba(34, 197, 94, 0.3); background: rgba(30, 41, 59, 0.7); }
 .food-item-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .food-item-name { font-weight: 700; font-size: 0.95rem; color: #f8fafc; }
 .food-item-cal { font-size: 0.8rem; font-weight: 800; color: #00f0ff; background: rgba(0, 240, 255, 0.1); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(0, 240, 255, 0.2); white-space: nowrap; }
+.food-item-actions { display: flex; align-items: center; gap: 4px; }
 .food-item-macros { display: flex; align-items: center; gap: 12px; font-size: 0.78rem; font-weight: 600; color: #94a3b8; }
 .food-macro-pill { display: inline-flex; align-items: center; gap: 4px; }
 
-/* Rensa Macros Specific Styles */
+/* Meal Header Macros */
+.meal-header-macros { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 700; }
+
+/* Quick Presets */
+.portion-presets { display: flex; gap: 6px; margin-bottom: 12px; }
+.btn-preset { flex: 1; padding: 6px 4px; font-size: 0.72rem; font-weight: 700; background: rgba(15, 23, 42, 0.6); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; cursor: pointer; }
+.btn-preset:active { transform: scale(0.95); background: rgba(56, 189, 248, 0.2); }
+
+/* Macro Colors */
 .text-cyan { color: #00f0ff; }
 .text-pink { color: #ec4899; }
 .text-amber { color: #f59e0b; }
@@ -251,42 +302,3 @@ li { background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.
 .fill-amber { background: #f59e0b; }
 .fill-emerald { background: #10b981; }
 .macro-label { font-size: 0.75rem; color: #94a3b8; font-weight: 600; display: block; margin-bottom: 4px; }
-
-/* Superset & Circuit Grouping */
-.superset-group {
-  background: rgba(168, 85, 247, 0.08);
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  border-radius: 14px;
-  padding: 10px;
-  margin-bottom: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  position: relative;
-}
-
-.superset-badge-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(168, 85, 247, 0.2);
-}
-
-.superset-tag {
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: #a855f7;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: rgba(168, 85, 247, 0.15);
-  padding: 2px 8px;
-  border-radius: 6px;
-  border: 1px solid rgba(168, 85, 247, 0.3);
-}
-
-.superset-group .routine-card {
-  margin-bottom: 0;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}

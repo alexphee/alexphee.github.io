@@ -21,6 +21,9 @@ let macroSelectedDate = new Date().toISOString().split('T')[0];
 let macroFoods = [];
 let macroLogs = [];
 let macroTargets = { calories: 2000, protein: 160, carbs: 220, fats: 65 };
+let macroWeightLogs = [];
+let weightChartInstance = null;
+let zxingCodeReader = null;
 
 const defaultMacroFoods = [
   { id: '1', name: 'Atlantic Salmon Filet', calories: 208, protein: 20, carbs: 0, fats: 13 },
@@ -37,7 +40,7 @@ const defaultMacroFoods = [
 
 const MEAL_TYPES = ['Breakfast', 'Brunch', 'Lunch', 'Snack', 'Afternoon', 'Dinner'];
 
-// Enriched Default Exercise Library
+// Default Exercise Library
 const defaultLibrary = [
   { exercise: "Barbell Bench Press", group_name: "Chest" },
   { exercise: "Cable Fly", group_name: "Chest" },
@@ -198,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const percentColumns = document.getElementById('percent-columns');
   const percentCloseBtn = document.getElementById('percent-close-btn');
 
-  // App Mode Switching
+  // Mode Switch
   appSwitchBtn.onclick = () => {
     activeAppMode = activeAppMode === 'pulse' ? 'macros' : 'pulse';
     localStorage.setItem('rensa_app_mode', activeAppMode);
@@ -224,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Bind Menu Triggers for Accordion Library
+  // Accordion Menu Triggers
   document.querySelectorAll('.open-lib-trigger').forEach(btn => {
     btn.onclick = (e) => {
       const isPR = e.target.closest('#pr-modal') !== null;
@@ -286,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Percent Modal Calculations & Display
+  // 1RM Breakdown
   window.showPercentages = function(id) {
     const pr = localPRs.find(p => p.id === id);
     if (!pr) return;
@@ -362,7 +365,6 @@ document.addEventListener('DOMContentLoaded', () => {
       activeAppMode = localStorage.getItem('rensa_app_mode') || 'pulse';
       renderAppMode();
 
-      await autoMigrateLocalStorage();
       await fetchAllUserData();
 
       const savedTab = localStorage.getItem('apex_active_tab');
@@ -400,31 +402,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function autoMigrateLocalStorage() {
-    const usersLS = JSON.parse(localStorage.getItem('prs_users')) || {};
-    const username = currentUser.user_metadata?.username || currentUser.email.split('@')[0];
-    const userData = usersLS[username] || usersLS[currentUser.email];
-
-    if (!userData || userData.migrated) return;
-
-    if (userData.prs && userData.prs.length) {
-      const prInserts = userData.prs.map(p => ({
-        user_id: currentUser.id, exercise: p.exercise, category: p.category, weight: p.weight, reps: p.reps, history: p.history || []
-      }));
-      await supabaseClient.from('prs').insert(prInserts);
-    }
-
-    if (userData.routines) {
-      for (const [dName, dVal] of Object.entries(userData.routines)) {
-        await supabaseClient.from('routines').upsert([{ user_id: currentUser.id, day_name: dName, title: dVal.title, exercises: dVal.exercises }], { onConflict: 'user_id, day_name' });
-      }
-    }
-
-    userData.migrated = true;
-    localStorage.setItem('prs_users', JSON.stringify(usersLS));
-  }
-
-  // Rensa Pulse Navigation & Tab Logic
   tabRoutine.onclick = () => switchTab('routine');
   tabRecords.onclick = () => switchTab('records');
   tabChart.onclick = () => switchTab('chart');
@@ -462,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderRoutineDay(dayName);
   };
 
+  // Render Routine Day with Grouped Supersets & Circuits
   function renderRoutineDay(dayName) {
     const dayData = localRoutines[dayName];
     const titleEl = document.getElementById('routine-title');
@@ -470,14 +448,13 @@ document.addEventListener('DOMContentLoaded', () => {
     titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
     containerEl.innerHTML = '';
 
-    if (!dayData || !dayData.exercises.length) {
+    if (!dayData || !dayData.exercises || !dayData.exercises.length) {
       containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
       return;
     }
 
-    dayData.exercises.forEach((ex, idx) => {
+    const buildCardElement = (ex, idx) => {
       const dotClass = getGroupDotClass(ex.muscleGroup);
-
       const card = document.createElement('div');
       card.className = 'routine-card';
       card.draggable = true;
@@ -491,6 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="routine-card-title">${ex.exercise}</span>
             <span class="badge">${ex.sets} sets × ${ex.reps}</span>
           </div>
+          ${ex.superset ? `<div class="routine-card-sub" style="color:#a855f7;">🔗 Superset ${ex.superset}</div>` : ''}
           ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
           ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
           
@@ -507,7 +485,6 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // Touch handlers for mobile drag & drop
       const handleEl = card.querySelector('.drag-handle');
       handleEl.addEventListener('touchstart', () => {
         draggedCardIndex = idx;
@@ -555,8 +532,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      containerEl.appendChild(card);
-    });
+      return card;
+    };
+
+    let i = 0;
+    while (i < dayData.exercises.length) {
+      const ex = dayData.exercises[i];
+
+      if (ex.superset) {
+        const groupTag = ex.superset;
+        const groupWrapper = document.createElement('div');
+        groupWrapper.className = 'superset-group';
+        groupWrapper.innerHTML = `
+          <div class="superset-badge-header">
+            <span class="superset-tag"><i class="fa-solid fa-link"></i> SUPERSET ${groupTag}</span>
+            <span style="font-size:0.7rem; color:#94a3b8;">Perform Back-To-Back</span>
+          </div>
+        `;
+
+        while (i < dayData.exercises.length && dayData.exercises[i].superset === groupTag) {
+          groupWrapper.appendChild(buildCardElement(dayData.exercises[i], i));
+          i++;
+        }
+        containerEl.appendChild(groupWrapper);
+      } else {
+        containerEl.appendChild(buildCardElement(ex, i));
+        i++;
+      }
+    }
   }
 
   async function saveRoutineDayToSupabase(dayName) {
@@ -589,6 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('routine-ex-target').value = ex.target || '';
       document.getElementById('routine-ex-rotation').value = ex.rotation || '';
       document.getElementById('routine-ex-tips').value = ex.tips || '';
+      document.getElementById('routine-ex-superset').value = ex.superset || '';
     }
 
     routineModal.classList.remove('hidden');
@@ -604,8 +608,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const target = document.getElementById('routine-ex-target').value.trim();
     const rotation = document.getElementById('routine-ex-rotation').value.trim();
     const tips = document.getElementById('routine-ex-tips').value.trim();
+    const superset = document.getElementById('routine-ex-superset').value;
 
-    const newObj = { exercise, muscleGroup, sets, reps, target, rotation, tips };
+    const newObj = { exercise, muscleGroup, sets, reps, target, rotation, tips, superset };
 
     if (editIdx !== '') localRoutines[selectedDayName].exercises[editIdx] = newObj;
     else localRoutines[selectedDayName].exercises.push(newObj);
@@ -790,11 +795,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderMacroLogs();
     renderMacroFoodLibrary();
+    await fetchWeightHistory();
   }
 
   function sortMacroFoodsAlphabetically() {
     macroFoods.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   }
+
+  window.setQuickPortion = function(grams) {
+    const input = document.getElementById('modal-log-weight');
+    input.value = grams;
+    updateModalCalculations();
+  };
 
   function renderMacroLogs() {
     const consumed = macroLogs.reduce((acc, curr) => ({
@@ -827,6 +839,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     MEAL_TYPES.forEach(meal => {
       const mealItems = macroLogs.filter(i => i.meal_type.toLowerCase() === meal.toLowerCase());
+      const mealTotals = mealItems.reduce((acc, curr) => ({
+        calories: acc.calories + (Number(curr.calories) || 0),
+        protein: acc.protein + (Number(curr.protein) || 0),
+        carbs: acc.carbs + (Number(curr.carbs) || 0),
+        fats: acc.fats + (Number(curr.fats) || 0)
+      }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
+
       const card = document.createElement('div');
       card.className = 'glass-card space-y-2';
 
@@ -839,10 +858,22 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
 
       card.innerHTML = `
-        <div style="display:flex; justify-content:space-between; font-weight:700; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:4px;">
-          <span>${meal}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-weight:700; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:4px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>${meal}</span>
+            <span style="font-size:0.72rem; color:#00f0ff; font-weight:800;">${Math.round(mealTotals.calories)} kcal</span>
+          </div>
           <button onclick="openAddLogModal('${meal}')" style="font-size:0.75rem; color:#00f0ff; background:none;">+ Add Food</button>
         </div>
+
+        ${mealItems.length > 0 ? `
+          <div class="meal-header-macros">
+            <span class="text-pink">P: ${Math.round(mealTotals.protein * 10) / 10}g</span> • 
+            <span class="text-amber">C: ${Math.round(mealTotals.carbs * 10) / 10}g</span> • 
+            <span class="text-emerald">F: ${Math.round(mealTotals.fats * 10) / 10}g</span>
+          </div>
+        ` : ''}
+
         ${itemsHtml}
       `;
       container.appendChild(card);
@@ -880,7 +911,13 @@ document.addEventListener('DOMContentLoaded', () => {
       item.innerHTML = `
         <div class="food-item-header">
           <span class="food-item-name">${food.name}</span>
-          <span class="food-item-cal">${food.calories} kcal / 100g</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="food-item-cal">${food.calories} kcal / 100g</span>
+            <div class="food-item-actions">
+              <button class="btn-icon" style="width:24px; height:24px;" onclick="openEditFoodModal('${food.id}')">✎</button>
+              <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteCustomFood('${food.id}')">✕</button>
+            </div>
+          </div>
         </div>
         <div class="food-item-macros">
           <span class="food-macro-pill text-pink">P: ${food.protein}g</span>
@@ -967,25 +1004,68 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMacroLogs();
   };
 
-  window.openNewFoodModal = function() { document.getElementById('modal-add-food').classList.remove('hidden'); };
-  window.closeNewFoodModal = function() { document.getElementById('modal-add-food').classList.add('hidden'); };
+  window.openNewFoodModal = function() {
+    document.getElementById('modal-food-edit-id').value = '';
+    document.getElementById('modal-food-title').innerHTML = `<i class="fa-solid fa-database text-pink"></i> Create Food Item (per 100g)`;
+    document.getElementById('form-add-food').reset();
+    document.getElementById('modal-add-food').classList.remove('hidden');
+  };
+
+  window.openEditFoodModal = function(id) {
+    const food = macroFoods.find(f => f.id == id);
+    if (!food) return;
+
+    document.getElementById('modal-food-edit-id').value = food.id;
+    document.getElementById('modal-food-title').innerHTML = `<i class="fa-solid fa-pen text-pink"></i> Edit Custom Food`;
+    document.getElementById('modal-food-name').value = food.name;
+    document.getElementById('modal-food-calories').value = food.calories;
+    document.getElementById('modal-food-protein').value = food.protein;
+    document.getElementById('modal-food-carbs').value = food.carbs;
+    document.getElementById('modal-food-fats').value = food.fats;
+
+    document.getElementById('modal-add-food').classList.remove('hidden');
+  };
+
+  window.deleteCustomFood = async function(id) {
+    if (!confirm("Delete this food item from your database?")) return;
+
+    if (currentUser) {
+      await supabaseClient.from('macros_foods').delete().eq('id', id);
+    }
+
+    macroFoods = macroFoods.filter(f => f.id != id);
+    renderMacroFoodLibrary();
+  };
+
+  window.closeNewFoodModal = function() { 
+    stopBarcodeScan();
+    document.getElementById('modal-add-food').classList.add('hidden'); 
+  };
 
   window.saveNewFoodItem = async function(e) {
     e.preventDefault();
-    const newFood = {
-      user_id: currentUser.id,
-      name: document.getElementById('modal-food-name').value.trim(),
-      calories: parseFloat(document.getElementById('modal-food-calories').value) || 0,
-      protein: parseFloat(document.getElementById('modal-food-protein').value) || 0,
-      carbs: parseFloat(document.getElementById('modal-food-carbs').value) || 0,
-      fats: parseFloat(document.getElementById('modal-food-fats').value) || 0
-    };
+    const editId = document.getElementById('modal-food-edit-id').value;
+    const name = document.getElementById('modal-food-name').value.trim();
+    const calories = parseFloat(document.getElementById('modal-food-calories').value) || 0;
+    const protein = parseFloat(document.getElementById('modal-food-protein').value) || 0;
+    const carbs = parseFloat(document.getElementById('modal-food-carbs').value) || 0;
+    const fats = parseFloat(document.getElementById('modal-food-fats').value) || 0;
 
-    const { data } = await supabaseClient.from('macros_foods').insert([newFood]).select();
-    if (data) {
-      macroFoods.push(data[0]);
+    if (editId) {
+      if (currentUser) {
+        await supabaseClient.from('macros_foods').update({ name, calories, protein, carbs, fats }).eq('id', editId);
+      }
+      const idx = macroFoods.findIndex(f => f.id == editId);
+      if (idx !== -1) macroFoods[idx] = { ...macroFoods[idx], name, calories, protein, carbs, fats };
     } else {
-      macroFoods.push(newFood);
+      const newFood = { user_id: currentUser ? currentUser.id : 'local', name, calories, protein, carbs, fats };
+      if (currentUser) {
+        const { data } = await supabaseClient.from('macros_foods').insert([newFood]).select();
+        if (data) macroFoods.push(data[0]);
+      } else {
+        newFood.id = 'f_' + Date.now();
+        macroFoods.push(newFood);
+      }
     }
 
     sortMacroFoodsAlphabetically();
@@ -993,10 +1073,219 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMacroFoodLibrary();
   };
 
+  // Body Weight Tracking Handlers
+  window.openWeightModal = function() {
+    document.getElementById('weight-log-date').value = macroSelectedDate;
+    document.getElementById('weight-log-val').value = '';
+    document.getElementById('modal-log-weight').classList.remove('hidden');
+  };
+
+  window.closeWeightModal = function() {
+    document.getElementById('modal-log-weight').classList.add('hidden');
+  };
+
+  async function fetchWeightHistory() {
+    if (currentUser) {
+      const { data } = await supabaseClient
+        .from('macros_weight')
+        .select('*')
+        .order('date', { ascending: true });
+      macroWeightLogs = data || [];
+    } else {
+      macroWeightLogs = JSON.parse(localStorage.getItem('rensa_weight_logs')) || [];
+    }
+
+    renderWeightChartAndList();
+  }
+
+  window.saveWeightLog = async function(e) {
+    e.preventDefault();
+    const date = document.getElementById('weight-log-date').value;
+    const weight = parseFloat(document.getElementById('weight-log-val').value) || 0;
+
+    if (currentUser) {
+      await supabaseClient
+        .from('macros_weight')
+        .upsert([{ user_id: currentUser.id, date, weight }], { onConflict: 'user_id, date' });
+    } else {
+      const idx = macroWeightLogs.findIndex(w => w.date === date);
+      if (idx !== -1) macroWeightLogs[idx].weight = weight;
+      else macroWeightLogs.push({ date, weight });
+      macroWeightLogs.sort((a, b) => new Date(a.date) - new Date(b.date));
+      localStorage.setItem('rensa_weight_logs', JSON.stringify(macroWeightLogs));
+    }
+
+    closeWeightModal();
+    await fetchWeightHistory();
+  };
+
+  window.deleteWeightLog = async function(id, date) {
+    if (currentUser) {
+      await supabaseClient.from('macros_weight').delete().eq('id', id);
+    } else {
+      macroWeightLogs = macroWeightLogs.filter(w => w.date !== date);
+      localStorage.setItem('rensa_weight_logs', JSON.stringify(macroWeightLogs));
+    }
+    await fetchWeightHistory();
+  };
+
+  function renderWeightChartAndList() {
+    const historyList = document.getElementById('weight-history-list');
+    if (!historyList) return;
+
+    historyList.innerHTML = '';
+
+    if (macroWeightLogs.length === 0) {
+      historyList.innerHTML = '<div class="empty-state" style="padding: 12px;">No weight entries logged yet.</div>';
+      if (weightChartInstance) weightChartInstance.destroy();
+      return;
+    }
+
+    [...macroWeightLogs].reverse().forEach(entry => {
+      const item = document.createElement('div');
+      item.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.5); padding:8px 12px; border-radius:8px; font-size:0.8rem;';
+      item.innerHTML = `
+        <span><strong>${entry.weight} kg</strong> on ${entry.date}</span>
+        <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteWeightLog('${entry.id}', '${entry.date}')">✕</button>
+      `;
+      historyList.appendChild(item);
+    });
+
+    const ctx = document.getElementById('weightChart');
+    if (!ctx) return;
+
+    if (weightChartInstance) weightChartInstance.destroy();
+
+    const labels = macroWeightLogs.map(w => w.date);
+    const data = macroWeightLogs.map(w => w.weight);
+
+    weightChartInstance = new Chart(ctx.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Body Weight (kg)',
+          data,
+          borderColor: '#00f0ff',
+          backgroundColor: 'rgba(0, 240, 255, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 4,
+          pointBackgroundColor: '#a855f7'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#f8fafc' } } },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+  }
+
+  // Barcode Scanner Integration (Open Food Facts)
+  window.startBarcodeScan = function() {
+    const container = document.getElementById('barcode-scanner-container');
+    container.classList.remove('hidden');
+
+    if (!zxingCodeReader) {
+      zxingCodeReader = new ZXing.BrowserMultiFormatReader();
+    }
+
+    zxingCodeReader.decodeFromVideoDevice(null, 'barcode-video', (result, err) => {
+      if (result) {
+        const barcode = result.getText();
+        stopBarcodeScan();
+        fetchOpenFoodFactsProduct(barcode);
+      }
+    }).catch(err => {
+      console.error("Barcode Scanner Error:", err);
+      alert("Unable to access camera for barcode scanning.");
+      stopBarcodeScan();
+    });
+  };
+
+  window.stopBarcodeScan = function() {
+    if (zxingCodeReader) {
+      zxingCodeReader.reset();
+    }
+    const container = document.getElementById('barcode-scanner-container');
+    if (container) container.classList.add('hidden');
+  };
+
+  async function fetchOpenFoodFactsProduct(barcode) {
+    const banner = document.getElementById('scan-status-banner');
+    const statusText = document.getElementById('scan-status-text');
+
+    banner.classList.remove('hidden');
+    statusText.textContent = `Looking up barcode ${barcode}...`;
+
+    try {
+      const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      const data = await response.json();
+
+      banner.classList.add('hidden');
+
+      if (data.status === 1 && data.product) {
+        const p = data.product;
+        const name = p.product_name || p.product_name_en || "Scanned Product";
+        const nutriments = p.nutriments || {};
+
+        const calories = parseFloat(nutriments['energy-kcal_100g'] || nutriments['energy-kcal_value'] || nutriments['energy-kcal'] || 0);
+        const protein = parseFloat(nutriments.proteins_100g || nutriments.proteins_value || 0);
+        const carbs = parseFloat(nutriments.carbohydrates_100g || nutriments.carbohydrates_value || 0);
+        const fats = parseFloat(nutriments.fat_100g || nutriments.fat_value || 0);
+
+        document.getElementById('modal-food-name').value = name;
+        document.getElementById('modal-food-calories').value = Math.round(calories);
+        document.getElementById('modal-food-protein').value = Math.round(protein * 10) / 10;
+        document.getElementById('modal-food-carbs').value = Math.round(carbs * 10) / 10;
+        document.getElementById('modal-food-fats').value = Math.round(fats * 10) / 10;
+
+        alert(`Found Product: "${name}"! Macro values auto-filled per 100g.`);
+      } else {
+        alert(`Barcode ${barcode} not found in Open Food Facts database. Please enter details manually.`);
+      }
+    } catch (err) {
+      console.error("Open Food Facts API Error:", err);
+      banner.classList.add('hidden');
+      alert("Failed to connect to Open Food Facts database.");
+    }
+  }
+
   // OCR Label Scanning Handlers
   window.triggerCameraScan = function() {
     document.getElementById('scan-camera-input').click();
   };
+
+  function preprocessImageForOCR(file, callback) {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        const threshold = avg > 120 ? 255 : 0;
+        data[i] = threshold;
+        data[i + 1] = threshold;
+        data[i + 2] = threshold;
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      callback(canvas.toDataURL('image/jpeg', 0.9));
+    };
+  }
 
   window.processLabelImage = function(inputEl) {
     if (!inputEl.files || !inputEl.files[0]) return;
@@ -1006,291 +1295,108 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusText = document.getElementById('scan-status-text');
 
     banner.classList.remove('hidden');
-    statusText.textContent = "Analyzing nutrition label...";
+    statusText.textContent = "Enhancing image contrast...";
 
-    Tesseract.recognize(file, 'eng', {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          statusText.textContent = `Scanning: ${Math.round(m.progress * 100)}%`;
-        }
-      }
-    }).then(({ data: { text } }) => {
-      banner.classList.add('hidden');
-      parseAndAutofillNutrition(text);
-    }).catch(err => {
-      console.error("OCR Scan Error:", err);
-      banner.classList.add('hidden');
-      alert("Could not read nutrition label. Please type values manually.");
-    });
-  };
+    preprocessImageForOCR(file, (processedImageData) => {
+      statusText.textContent = "Analyzing nutrition label...";
 
-function parseAndAutofillNutrition(ocrText) {
-  // Replace Greek commas with dots, convert to lowercase for easy matching
-  const cleanedText = ocrText
-    .replace(/(\d+),(\d+)/g, '$1.$2') // Convert "2,1g" -> "2.1g"
-    .replace(/[|,;]/g, '.')
-    .toLowerCase();
-
-  const lines = cleanedText.split('\n');
-
-  let foundCal = null;
-  let foundFat = null;
-  let foundCarbs = null;
-  let foundProtein = null;
-
-  // Greek & English Keywords
-  const greekPatterns = {
-    // Energy: Capture numbers right before 'kcal'
-    cal: /(?:ενέργεια|energy|ενεργεια)\D*(\d+)\s*kj\s*\/\s*(\d+)\s*kcal/i,
-    calFallback: /(\d+)\s*kcal/i,
-
-    // Fat: 'λιπαρά' or 'fat'
-    fat: /(?:λιπαρά|λιπαρα|fat)\D*(\d+(?:\.\d+)?)\s*g?/i,
-
-    // Carbs: 'υδατάνθρακες' or 'carbohydrate'
-    carbs: /(?:υδατάνθρακες|υδατανθρακες|carbohydrate|carbs)\D*(\d+(?:\.\d+)?)\s*g?/i,
-
-    // Protein: 'πρωτεΐνες' or 'protein'
-    protein: /(?:πρωτεΐνες|πρωτεινες|protein)\D*(\d+(?:\.\d+)?)\s*g?/i
-  };
-
-  for (let line of lines) {
-    // Skip 'εκ των οποίων' / 'of which' sub-rows (Saturates/Sugars)
-    if (line.includes('οποίων') || line.includes('opoion') || line.includes('which')) {
-      continue;
-    }
-
-    // 1. Calories (Extract the kcal value from '1424kJ/337kcal')
-    if (foundCal === null) {
-      const match = line.match(greekPatterns.cal) || line.match(greekPatterns.calFallback);
-      if (match) {
-        // If dual match (kJ / kcal), take the kcal group
-        const val = parseFloat(match[2] || match[1]);
-        if (val < 1000) foundCal = val;
-      }
-    }
-
-    // 2. Fat (Ensure we pick 100g column, first number after keyword)
-    if (foundFat === null && (line.includes('λιπαρ') || line.includes('fat'))) {
-      const match = line.match(greekPatterns.fat);
-      if (match) {
-        const val = parseFloat(match[1]);
-        if (val <= 100) foundFat = val;
-      }
-    }
-
-    // 3. Carbohydrates
-    if (foundCarbs === null && (line.includes('υδατ') || line.includes('carb'))) {
-      const match = line.match(greekPatterns.carbs);
-      if (match) {
-        const val = parseFloat(match[1]);
-        if (val <= 100) foundCarbs = val;
-      }
-    }
-
-    // 4. Protein
-    if (foundProtein === null && (line.includes('πρωτ') || line.includes('protein'))) {
-      const match = line.match(greekPatterns.protein);
-      if (match) {
-        const val = parseFloat(match[1]);
-        if (val <= 100) foundProtein = val;
-      }
-    }
-  }
-
-  let filledCount = 0;
-
-  if (foundCal !== null) {
-    document.getElementById('modal-food-calories').value = foundCal;
-    filledCount++;
-  }
-  if (foundProtein !== null) {
-    document.getElementById('modal-food-protein').value = foundProtein;
-    filledCount++;
-  }
-  if (foundCarbs !== null) {
-    document.getElementById('modal-food-carbs').value = foundCarbs;
-    filledCount++;
-  }
-  if (foundFat !== null) {
-    document.getElementById('modal-food-fats').value = foundFat;
-    filledCount++;
-  }
-
-      if (filledCount > 0) {
-      alert(`Label scanned! Auto-filled ${filledCount} field(s). Please verify values before saving.`);
-    } else {
-      alert("Could not detect macro values clearly. Please verify the label orientation and type values manually.");
-    }
-}
-});
-
-// Render Routine Day with Grouped Supersets & Circuits
-function renderRoutineDay(dayName) {
-  const dayData = localRoutines[dayName];
-  const titleEl = document.getElementById('routine-title');
-  const containerEl = document.getElementById('routine-container');
-
-  titleEl.textContent = dayData ? dayData.title : `${dayName} Plan`;
-  containerEl.innerHTML = '';
-
-  if (!dayData || !dayData.exercises || !dayData.exercises.length) {
-    containerEl.innerHTML = '<div class="empty-state">No workout entries set for this day. Tap + to add one!</div>';
-    return;
-  }
-
-  // Helper function to build routine card HTML
-  const buildCardElement = (ex, idx) => {
-    const dotClass = getGroupDotClass(ex.muscleGroup);
-    const card = document.createElement('div');
-    card.className = 'routine-card';
-    card.draggable = true;
-    card.dataset.index = idx;
-
-    card.innerHTML = `
-      <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
-      <span class="routine-num">${idx + 1}.</span>
-      <div class="routine-card-content">
-        <div class="routine-card-header">
-          <span class="routine-card-title">${ex.exercise}</span>
-          <span class="badge">${ex.sets} sets × ${ex.reps}</span>
-        </div>
-        ${ex.superset ? `<div class="routine-card-sub" style="color:#a855f7;">🔗 Superset ${ex.superset}</div>` : ''}
-        ${ex.rotation ? `<div class="routine-card-sub">🔄 Rotation: ${ex.rotation}</div>` : ''}
-        ${ex.tips ? `<div class="routine-card-tips">💡 ${ex.tips}</div>` : ''}
-        
-        <div class="routine-card-footer">
-          <div class="routine-card-footer-left">
-            <span class="group-square-badge ${dotClass}"></span>
-            <span>${ex.muscleGroup || 'General'} ${ex.target ? '• ' + ex.target : ''}</span>
-          </div>
-        </div>
-      </div>
-      <div class="actions" style="flex-direction: column; align-items: center; justify-content: center;">
-        <button class="btn-icon" style="width:24px; height:24px; margin-bottom: 4px;" onclick="openRoutineModal(${idx})">✎</button>
-        <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteRoutineExercise(${idx})">✕</button>
-      </div>
-    `;
-
-    // Mobile Drag & Drop Events
-    const handleEl = card.querySelector('.drag-handle');
-    handleEl.addEventListener('touchstart', () => {
-      draggedCardIndex = idx;
-      card.classList.add('dragging');
-    }, { passive: true });
-
-    handleEl.addEventListener('touchmove', (e) => {
-      if (draggedCardIndex === null) return;
-      const touch = e.touches[0];
-      const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
-      if (!targetEl) return;
-
-      const targetCard = targetEl.closest('.routine-card');
-      if (targetCard && targetCard !== card) {
-        const allCards = Array.from(containerEl.querySelectorAll('.routine-card'));
-        const targetIndex = allCards.indexOf(targetCard);
-        const currentIndex = allCards.indexOf(card);
-
-        if (targetIndex !== -1 && currentIndex !== -1 && targetIndex !== currentIndex) {
-          if (targetIndex > currentIndex) {
-            containerEl.insertBefore(card, targetCard.nextSibling);
-          } else {
-            containerEl.insertBefore(card, targetCard);
+      Tesseract.recognize(processedImageData, 'eng', {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            statusText.textContent = `Scanning: ${Math.round(m.progress * 100)}%`;
           }
         }
-      }
-    }, { passive: true });
-
-    handleEl.addEventListener('touchend', async () => {
-      card.classList.remove('dragging');
-      if (draggedCardIndex !== null) {
-        const allCards = Array.from(containerEl.querySelectorAll('.routine-card'));
-        const originalList = [...localRoutines[selectedDayName].exercises];
-        const newList = [];
-
-        allCards.forEach((cEl) => {
-          const origIdx = parseInt(cEl.dataset.index, 10);
-          if (originalList[origIdx]) newList.push(originalList[origIdx]);
-        });
-
-        localRoutines[selectedDayName].exercises = newList;
-        draggedCardIndex = null;
-        await saveRoutineDayToSupabase(selectedDayName);
-        renderRoutineDay(selectedDayName);
-      }
+      }).then(({ data: { text } }) => {
+        banner.classList.add('hidden');
+        parseAndAutofillNutrition(text);
+      }).catch(err => {
+        console.error("OCR Scan Error:", err);
+        banner.classList.add('hidden');
+        alert("Could not read label. Please ensure clear focus and good lighting.");
+      });
     });
-
-    return card;
   };
 
-  // Group items by Superset while maintaining sequence
-  let i = 0;
-  while (i < dayData.exercises.length) {
-    const ex = dayData.exercises[i];
+  function parseAndAutofillNutrition(ocrText) {
+    const cleanedText = ocrText
+      .replace(/(\d+),(\d+)/g, '$1.$2')
+      .replace(/[|,;]/g, '.')
+      .toLowerCase();
 
-    if (ex.superset) {
-      const groupTag = ex.superset;
-      const groupWrapper = document.createElement('div');
-      groupWrapper.className = 'superset-group';
-      groupWrapper.innerHTML = `
-        <div class="superset-badge-header">
-          <span class="superset-tag"><i class="fa-solid fa-link"></i> SUPERSET ${groupTag}</span>
-          <span style="font-size:0.7rem; color:#94a3b8;">Perform Back-To-Back</span>
-        </div>
-      `;
+    const lines = cleanedText.split('\n');
 
-      while (i < dayData.exercises.length && dayData.exercises[i].superset === groupTag) {
-        groupWrapper.appendChild(buildCardElement(dayData.exercises[i], i));
-        i++;
+    let foundCal = null;
+    let foundFat = null;
+    let foundCarbs = null;
+    let foundProtein = null;
+
+    const greekPatterns = {
+      cal: /(?:ενέργεια|energy|ενεργεια)\D*(\d+)\s*kj\s*\/\s*(\d+)\s*kcal/i,
+      calFallback: /(\d+)\s*kcal/i,
+      fat: /(?:λιπαρά|λιπαρα|fat)\D*(\d+(?:\.\d+)?)\s*g?/i,
+      carbs: /(?:υδατάνθρακες|υδατανθρακες|carbohydrate|carbs)\D*(\d+(?:\.\d+)?)\s*g?/i,
+      protein: /(?:πρωτεΐνες|πρωτεινες|protein)\D*(\d+(?:\.\d+)?)\s*g?/i
+    };
+
+    for (let line of lines) {
+      if (line.includes('οποίων') || line.includes('opoion') || line.includes('which')) continue;
+
+      if (foundCal === null) {
+        const match = line.match(greekPatterns.cal) || line.match(greekPatterns.calFallback);
+        if (match) {
+          const val = parseFloat(match[2] || match[1]);
+          if (val < 1000) foundCal = val;
+        }
       }
-      containerEl.appendChild(groupWrapper);
+
+      if (foundFat === null && (line.includes('λιπαρ') || line.includes('fat'))) {
+        const match = line.match(greekPatterns.fat);
+        if (match) {
+          const val = parseFloat(match[1]);
+          if (val <= 100) foundFat = val;
+        }
+      }
+
+      if (foundCarbs === null && (line.includes('υδατ') || line.includes('carb'))) {
+        const match = line.match(greekPatterns.carbs);
+        if (match) {
+          const val = parseFloat(match[1]);
+          if (val <= 100) foundCarbs = val;
+        }
+      }
+
+      if (foundProtein === null && (line.includes('πρωτ') || line.includes('protein'))) {
+        const match = line.match(greekPatterns.protein);
+        if (match) {
+          const val = parseFloat(match[1]);
+          if (val <= 100) foundProtein = val;
+        }
+      }
+    }
+
+    let filledCount = 0;
+
+    if (foundCal !== null) {
+      document.getElementById('modal-food-calories').value = foundCal;
+      filledCount++;
+    }
+    if (foundProtein !== null) {
+      document.getElementById('modal-food-protein').value = foundProtein;
+      filledCount++;
+    }
+    if (foundCarbs !== null) {
+      document.getElementById('modal-food-carbs').value = foundCarbs;
+      filledCount++;
+    }
+    if (foundFat !== null) {
+      document.getElementById('modal-food-fats').value = foundFat;
+      filledCount++;
+    }
+
+    if (filledCount > 0) {
+      alert(`Label scanned! Auto-filled ${filledCount} field(s). Please verify extracted numbers before saving.`);
     } else {
-      containerEl.appendChild(buildCardElement(ex, i));
-      i++;
+      alert("Could not clearly read Greek nutrition table. Please ensure good lighting and crop close to the table.");
     }
   }
-}
-
-// Open Routine Modal (Updated with Superset Support)
-window.openRoutineModal = function(editIdx = null) {
-  routineForm.reset();
-  routineSuggestionBox.classList.add('hidden');
-  document.getElementById('routine-edit-idx').value = editIdx !== null ? editIdx : '';
-
-  if (editIdx !== null && localRoutines[selectedDayName] && localRoutines[selectedDayName].exercises[editIdx]) {
-    const ex = localRoutines[selectedDayName].exercises[editIdx];
-    routineExName.value = ex.exercise || '';
-    document.getElementById('routine-ex-group').value = ex.muscleGroup || 'Chest';
-    document.getElementById('routine-ex-sets').value = ex.sets || '';
-    document.getElementById('routine-ex-reps').value = ex.reps || '';
-    document.getElementById('routine-ex-target').value = ex.target || '';
-    document.getElementById('routine-ex-rotation').value = ex.rotation || '';
-    document.getElementById('routine-ex-tips').value = ex.tips || '';
-    document.getElementById('routine-ex-superset').value = ex.superset || '';
-  }
-
-  routineModal.classList.remove('hidden');
-};
-
-// Form Submission for Routine Exercise
-routineForm.onsubmit = async (e) => {
-  e.preventDefault();
-  const editIdx = document.getElementById('routine-edit-idx').value;
-  const exercise = routineExName.value.trim();
-  const muscleGroup = document.getElementById('routine-ex-group').value;
-  const sets = document.getElementById('routine-ex-sets').value.trim();
-  const reps = document.getElementById('routine-ex-reps').value.trim();
-  const target = document.getElementById('routine-ex-target').value.trim();
-  const rotation = document.getElementById('routine-ex-rotation').value.trim();
-  const tips = document.getElementById('routine-ex-tips').value.trim();
-  const superset = document.getElementById('routine-ex-superset').value;
-
-  const newObj = { exercise, muscleGroup, sets, reps, target, rotation, tips, superset };
-
-  if (editIdx !== '') localRoutines[selectedDayName].exercises[editIdx] = newObj;
-  else localRoutines[selectedDayName].exercises.push(newObj);
-
-  await saveRoutineDayToSupabase(selectedDayName);
-  routineModal.classList.add('hidden');
-  renderRoutineDay(selectedDayName);
-};
+});
