@@ -66,7 +66,7 @@
           <button id="app-switch-btn" class="btn-switch">⚡ Switch to Nutrition</button>
           <button class="logout-btn" id="logout-btn">Logout</button>
         </div>
-        <span class="version-badge">ver 2.2.0</span>
+        <span class="version-badge">ver 2.3.0</span>
       </div>
     </div>
 
@@ -140,7 +140,10 @@
             <button onclick="changeMacroDate(1)" class="btn-icon">►</button>
             <button onclick="setMacroToday()" class="btn-secondary" style="padding: 6px 10px; font-size: 0.75rem;">Today</button>
           </div>
-          <button onclick="openAddLogModal()" class="btn-primary" style="padding: 8px 12px; font-size: 0.8rem;">+ Log Food</button>
+          <div style="display: flex; gap: 4px;">
+            <button onclick="copyCurrentDayMeals()" class="btn-secondary" style="padding: 8px 10px; font-size: 0.75rem;" title="Copy day's meals to another date">📋 Copy</button>
+            <button onclick="openAddLogModal()" class="btn-primary" style="padding: 8px 12px; font-size: 0.8rem;">+ Log Food</button>
+          </div>
         </div>
 
         <div class="glass-card p-4 rounded-2xl space-y-4" style="margin-bottom: 16px;">
@@ -185,7 +188,10 @@
         <div class="glass-card p-4 space-y-3" style="margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <h3 style="font-weight: 700; color: #f8fafc;"><i class="fa-solid fa-database text-cyan"></i> Food Database</h3>
-            <button onclick="openNewFoodModal()" class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;">+ New Custom Food</button>
+            <div style="display: flex; gap: 6px;">
+              <button onclick="openRecipeModal()" class="btn-secondary" style="padding: 6px 10px; font-size: 0.78rem;">🍲 Recipe</button>
+              <button onclick="openNewFoodModal()" class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;">+ Custom Food</button>
+            </div>
           </div>
           <input type="text" id="food-search-input" onkeyup="renderMacroFoodLibrary(this.value)" placeholder="Search food items (e.g., Chicken, Oats)...">
         </div>
@@ -210,11 +216,11 @@
           </form>
         </div>
 
-        <!-- Body Weight Tracker Block -->
+        <!-- Body Weight & Caloric Intake Chart Overlay Block -->
         <div class="glass-card p-4 space-y-3" style="margin-top: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
             <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc;">
-              <i class="fa-solid fa-weight-scale text-cyan"></i> Body Weight Tracker
+              <i class="fa-solid fa-weight-scale text-cyan"></i> Weight vs. Calorie Intake
             </h3>
             <button onclick="openWeightModal()" class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;">
               + Log Weight
@@ -222,7 +228,7 @@
           </div>
 
           <div class="glass-card" style="margin-top: 12px; padding: 10px;">
-            <canvas id="weightChart" style="max-height: 220px;"></canvas>
+            <canvas id="weightChart" style="max-height: 240px;"></canvas>
           </div>
 
           <div id="weight-history-list" style="display: flex; flex-direction: column; gap: 6px; margin-top: 12px;"></div>
@@ -393,6 +399,7 @@
     </div>
   </div>
 
+  <!-- Create Custom Food Modal -->
   <div id="modal-add-food" class="modal-overlay hidden">
     <div class="glass-card modal-card">
       <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center; gap: 4px;">
@@ -434,6 +441,45 @@
     </div>
   </div>
 
+  <!-- Recipe Builder Modal -->
+  <div id="modal-recipe-builder" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title"><i class="fa-solid fa-utensils text-amber"></i> Recipe Builder</div>
+      <div class="modal-subtitle">Combine ingredients to auto-calculate per 100g macros</div>
+      
+      <form id="form-recipe-builder" onsubmit="saveRecipeAsCustomFood(event)">
+        <input type="text" id="recipe-name" placeholder="Recipe Name (e.g., Morning Oats Bowl)" required>
+        
+        <div style="border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 10px 0; margin-bottom: 12px;">
+          <label class="macro-label">Add Ingredient</label>
+          <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+            <select id="recipe-ingredient-food" style="margin-bottom:0; flex:2;"></select>
+            <input type="number" id="recipe-ingredient-weight" placeholder="Grams" style="margin-bottom:0; flex:1;" min="1">
+            <button type="button" onclick="addIngredientToRecipe()" class="btn-primary" style="padding: 0 12px;">+</button>
+          </div>
+
+          <div id="recipe-ingredients-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto;"></div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.8); padding: 10px; border-radius: 10px; margin-bottom: 12px; font-size: 0.8rem;">
+          <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Calculated Recipe Macros (Per 100g)</div>
+          <div style="display: flex; justify-content: space-between; margin-top: 4px; font-weight: 700;">
+            <span class="text-cyan"><span id="recipe-calc-cal">0</span> kcal</span>
+            <span class="text-pink">P: <span id="recipe-calc-protein">0g</span></span>
+            <span class="text-amber">C: <span id="recipe-calc-carbs">0g</span></span>
+            <span class="text-emerald">F: <span id="recipe-calc-fats">0g</span></span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Save as Custom Food</button>
+          <button type="button" class="btn-secondary" onclick="closeRecipeModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Body Weight Modal -->
   <div id="modal-log-weight" class="modal-overlay hidden">
     <div class="glass-card modal-card">
       <div class="modal-title"><i class="fa-solid fa-weight-scale text-cyan"></i> Log Body Weight</div>
@@ -451,3 +497,4 @@
   <script src="script.js"></script>
 </body>
 </html>
+

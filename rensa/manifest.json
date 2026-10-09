@@ -1,19 +1,19 @@
 {
-"name": "Rensa Fitness - Workout & Macros Tracker",
-"short_name": "Rensa",
-"description": "Connected actions. Unstoppable gains.",
-"start_url": "./",
-"scope": "./",
-"display": "standalone",
-"background_color": "#0b0f19",
-"theme_color": "#0b0f19",
-"orientation": "portrait",
-"icons": [
-{
-"src": "rensa.jpeg",
-"sizes": "512x512",
-"type": "image/jpeg",
-"purpose": "any maskable"
-}
-]
+  "name": "Rensa Fitness - Workout & Nutrition Tracker",
+  "short_name": "Rensa",
+  "description": "Precision workout routines, PR tracking, and macro nutrition logging.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#0b0f19",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "rensa.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
 }
