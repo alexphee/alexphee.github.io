@@ -886,7 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Copy Meals Helper
+// Copy Meals Helper (Fixed State Sync)
   window.copyCurrentDayMeals = async function() {
     if (macroLogs.length === 0) {
       alert("No meals logged for the currently selected date to copy.");
@@ -910,7 +910,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 
     if (currentUser) {
-      await supabaseClient.from('macros_logs').insert(copyInserts);
+      const { error } = await supabaseClient.from('macros_logs').insert(copyInserts);
+      if (error) {
+        console.error("Error copying meals to Supabase:", error);
+        alert("Failed to copy meals. Please check your network connection.");
+        return;
+      }
     } else {
       let allLogs = JSON.parse(localStorage.getItem('rensa_macro_logs')) || [];
       allLogs = [...allLogs, ...copyInserts];
@@ -918,6 +923,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     alert(`Successfully copied ${copyInserts.length} meal item(s) to ${targetDate}!`);
+
+    // Automatically switch view to the target date & re-fetch fresh logs
+    macroSelectedDate = targetDate;
+    document.getElementById('macro-date-picker').value = targetDate;
+    await loadMacroData();
   };
 
   window.saveMacroTargets = function(e) {
