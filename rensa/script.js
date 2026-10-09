@@ -886,9 +886,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-// Copy Meals Helper (Fixed Supabase UUID Error)
+// Copy Meals Helper (Completely Fixed Supabase Payload)
   window.copyCurrentDayMeals = async function() {
-    if (macroLogs.length === 0) {
+    if (!macroLogs || macroLogs.length === 0) {
       alert("No meals logged for the currently selected date to copy.");
       return;
     }
@@ -897,38 +897,38 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!targetDate) return;
 
     if (currentUser) {
-      // For Supabase: Omit 'id' so Supabase auto-generates a valid UUID
+      // Build clean payload without any local ID or timestamp interference
       const copyInserts = macroLogs.map(l => ({
         user_id: currentUser.id,
-        date: targetDate,
-        meal_type: l.meal_type,
-        food_name: l.food_name,
-        weight: l.weight,
-        calories: l.calories,
-        protein: l.protein,
-        carbs: l.carbs,
-        fats: l.fats
+        date: String(targetDate),
+        meal_type: String(l.meal_type),
+        food_name: String(l.food_name),
+        weight: Number(l.weight),
+        calories: Number(l.calories),
+        protein: Number(l.protein),
+        carbs: Number(l.carbs),
+        fats: Number(l.fats)
       }));
 
-      const { error } = await supabaseClient.from('macros_logs').insert(copyInserts);
+      const { data, error } = await supabaseClient.from('macros_logs').insert(copyInserts).select();
+      
       if (error) {
-        console.error("Error copying meals to Supabase:", error);
-        alert("Failed to copy meals: " + error.message);
+        console.error("Supabase Copy Error:", error);
+        alert("Failed to copy meals to Supabase: " + error.message);
         return;
       }
     } else {
-      // For Local Storage offline mode
       const copyInserts = macroLogs.map(l => ({
-        id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         user_id: 'local',
         date: targetDate,
         meal_type: l.meal_type,
         food_name: l.food_name,
-        weight: l.weight,
-        calories: l.calories,
-        protein: l.protein,
-        carbs: l.carbs,
-        fats: l.fats
+        weight: Number(l.weight),
+        calories: Number(l.calories),
+        protein: Number(l.protein),
+        carbs: Number(l.carbs),
+        fats: Number(l.fats)
       }));
 
       let allLogs = JSON.parse(localStorage.getItem('rensa_macro_logs')) || [];
@@ -942,6 +942,131 @@ document.addEventListener('DOMContentLoaded', () => {
     macroSelectedDate = targetDate;
     document.getElementById('macro-date-picker').value = targetDate;
     await loadMacroData();
+  };
+
+  // Recipe Builder Handlers (Guaranteed Window Binding)
+  window.openRecipeModal = function() {
+    currentRecipeIngredients = [];
+    const recipeForm = document.getElementById('form-recipe-builder');
+    if (recipeForm) recipeForm.reset();
+    
+    const select = document.getElementById('recipe-ingredient-food');
+    if (select) {
+      select.innerHTML = '';
+      sortMacroFoodsAlphabetically();
+      macroFoods.forEach(f => {
+        select.innerHTML += `<option value="${f.id}">${f.name} (${f.calories} kcal/100g)</option>`;
+      });
+    }
+
+    renderRecipeIngredientsList();
+    document.getElementById('modal-recipe-builder').classList.remove('hidden');
+  };
+
+  window.closeRecipeModal = function() {
+    document.getElementById('modal-recipe-builder').classList.add('hidden');
+  };
+
+  window.addIngredientToRecipe = function() {
+    const foodId = document.getElementById('recipe-ingredient-food').value;
+    const weight = parseFloat(document.getElementById('recipe-ingredient-weight').value) || 0;
+    const food = macroFoods.find(f => f.id == foodId);
+
+    if (!food || weight <= 0) return;
+
+    currentRecipeIngredients.push({ food, weight });
+    document.getElementById('recipe-ingredient-weight').value = '';
+    renderRecipeIngredientsList();
+  };
+
+  window.removeRecipeIngredient = function(index) {
+    currentRecipeIngredients.splice(index, 1);
+    renderRecipeIngredientsList();
+  };
+
+  function renderRecipeIngredientsList() {
+    const list = document.getElementById('recipe-ingredients-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    let totalWeight = 0;
+    let totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
+
+    currentRecipeIngredients.forEach((item, idx) => {
+      const factor = item.weight / 100;
+      totalWeight += item.weight;
+      totalCal += item.food.calories * factor;
+      totalP += item.food.protein * factor;
+      totalC += item.food.carbs * factor;
+      totalF += item.food.fats * factor;
+
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; background:rgba(15,23,42,0.5); padding:4px 8px; border-radius:6px;';
+      row.innerHTML = `
+        <span>${item.food.name} (${item.weight}g)</span>
+        <button type="button" class="btn-icon del" style="width:20px; height:20px;" onclick="removeRecipeIngredient(${idx})">✕</button>
+      `;
+      list.appendChild(row);
+    });
+
+    if (totalWeight > 0) {
+      const per100Factor = 100 / totalWeight;
+      document.getElementById('recipe-calc-cal').textContent = Math.round(totalCal * per100Factor);
+      document.getElementById('recipe-calc-protein').textContent = `${Math.round(totalP * per100Factor * 10) / 10}g`;
+      document.getElementById('recipe-calc-carbs').textContent = `${Math.round(totalC * per100Factor * 10) / 10}g`;
+      document.getElementById('recipe-calc-fats').textContent = `${Math.round(totalF * per100Factor * 10) / 10}g`;
+    } else {
+      document.getElementById('recipe-calc-cal').textContent = '0';
+      document.getElementById('recipe-calc-protein').textContent = '0g';
+      document.getElementById('recipe-calc-carbs').textContent = '0g';
+      document.getElementById('recipe-calc-fats').textContent = '0g';
+    }
+  }
+
+  window.saveRecipeAsCustomFood = async function(e) {
+    e.preventDefault();
+    const recipeName = document.getElementById('recipe-name').value.trim();
+
+    let totalWeight = 0;
+    let totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
+
+    currentRecipeIngredients.forEach(item => {
+      const factor = item.weight / 100;
+      totalWeight += item.weight;
+      totalCal += item.food.calories * factor;
+      totalP += item.food.protein * factor;
+      totalC += item.food.carbs * factor;
+      totalF += item.food.fats * factor;
+    });
+
+    if (totalWeight <= 0) {
+      alert("Please add at least one ingredient to your recipe.");
+      return;
+    }
+
+    const per100Factor = 100 / totalWeight;
+    const newFood = {
+      user_id: currentUser ? currentUser.id : 'local',
+      name: `${recipeName} (Recipe)`,
+      calories: Math.round(totalCal * per100Factor),
+      protein: Math.round(totalP * per100Factor * 10) / 10,
+      carbs: Math.round(totalC * per100Factor * 10) / 10,
+      fats: Math.round(totalF * per100Factor * 10) / 10
+    };
+
+    if (currentUser) {
+      const { data } = await supabaseClient.from('macros_foods').insert([newFood]).select();
+      if (data) macroFoods.push(data[0]);
+    } else {
+      newFood.id = 'f_' + Date.now();
+      macroFoods.push(newFood);
+      localStorage.setItem('rensa_macro_foods', JSON.stringify(macroFoods));
+    }
+
+    sortMacroFoodsAlphabetically();
+    closeRecipeModal();
+    renderMacroFoodLibrary();
+    alert(`Saved "${recipeName}" as a custom food item!`);
   };
 
   window.saveMacroTargets = function(e) {
