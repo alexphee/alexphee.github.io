@@ -1417,22 +1417,32 @@ window.saveLoggedFood = async function(e) {
   };
 
   // Body Weight & Calorie Dual-Axis Chart
+// Open / Close Body Weight Modal
   window.openWeightModal = function() {
-    document.getElementById('weight-log-date').value = macroSelectedDate;
-    document.getElementById('weight-log-val').value = '';
-    document.getElementById('modal-log-weight').classList.remove('hidden');
+    const datePicker = document.getElementById('weight-log-date');
+    const valInput = document.getElementById('weight-log-val');
+    
+    if (datePicker) datePicker.value = macroSelectedDate;
+    if (valInput) valInput.value = '';
+    
+    const modal = document.getElementById('modal-log-weight');
+    if (modal) modal.classList.remove('hidden');
   };
 
   window.closeWeightModal = function() {
-    document.getElementById('modal-log-weight').classList.add('hidden');
+    const modal = document.getElementById('modal-log-weight');
+    if (modal) modal.classList.add('hidden');
   };
 
+  // Fetch Weight Logs History
   async function fetchWeightHistory() {
     if (currentUser) {
-      const { data } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from('macros_weight')
         .select('*')
         .order('date', { ascending: true });
+        
+      if (error) console.error("Supabase Weight Fetch Error:", error);
       macroWeightLogs = data || [];
     } else {
       macroWeightLogs = JSON.parse(localStorage.getItem('rensa_weight_logs')) || [];
@@ -1441,19 +1451,36 @@ window.saveLoggedFood = async function(e) {
     renderWeightChartAndList();
   }
 
+  // Save or Upsert Body Weight Entry
   window.saveWeightLog = async function(e) {
     e.preventDefault();
     const date = document.getElementById('weight-log-date').value;
     const weight = parseFloat(document.getElementById('weight-log-val').value) || 0;
 
+    if (weight <= 0) {
+      alert("Please enter a valid weight value.");
+      return;
+    }
+
     if (currentUser) {
-      await supabaseClient
+      const { error } = await supabaseClient
         .from('macros_weight')
-        .upsert([{ user_id: currentUser.id, date, weight }], { onConflict: 'user_id, date' });
+        .upsert([{ 
+          user_id: currentUser.id, 
+          date: String(date), 
+          weight: Number(weight) 
+        }], { onConflict: 'user_id, date' });
+
+      if (error) {
+        console.error("Supabase Weight Save Error:", error);
+        alert("Failed to save weight entry: " + error.message);
+        return;
+      }
     } else {
       const idx = macroWeightLogs.findIndex(w => w.date === date);
       if (idx !== -1) macroWeightLogs[idx].weight = weight;
-      else macroWeightLogs.push({ date, weight });
+      else macroWeightLogs.push({ id: 'w_' + Date.now(), date, weight });
+      
       macroWeightLogs.sort((a, b) => new Date(a.date) - new Date(b.date));
       localStorage.setItem('rensa_weight_logs', JSON.stringify(macroWeightLogs));
     }
@@ -1462,13 +1489,17 @@ window.saveLoggedFood = async function(e) {
     await fetchWeightHistory();
   };
 
+  // Delete Body Weight Entry
   window.deleteWeightLog = async function(id, date) {
-    if (currentUser) {
+    if (!confirm("Delete this weight entry?")) return;
+
+    if (currentUser && id && id !== 'undefined') {
       await supabaseClient.from('macros_weight').delete().eq('id', id);
     } else {
       macroWeightLogs = macroWeightLogs.filter(w => w.date !== date);
       localStorage.setItem('rensa_weight_logs', JSON.stringify(macroWeightLogs));
     }
+    
     await fetchWeightHistory();
   };
 
