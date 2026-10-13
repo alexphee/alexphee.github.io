@@ -24,7 +24,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <!-- ZXing Barcode Scanner Library -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 </head>
 <body>
@@ -66,7 +65,7 @@
           <button id="app-switch-btn" class="btn-switch">⚡ Switch to Nutrition</button>
           <button class="logout-btn" id="logout-btn">Logout</button>
         </div>
-        <span class="version-badge">ver 2.5.0</span>
+        <span class="version-badge">ver 2.6.0</span>
       </div>
     </div>
 
@@ -216,7 +215,6 @@
           </form>
         </div>
 
-        <!-- Body Weight & Caloric Intake Chart Overlay Block -->
         <div class="glass-card p-4 space-y-3" style="margin-top: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
             <h3 style="font-size: 0.95rem; font-weight: 700; color: #f8fafc;">
@@ -445,9 +443,10 @@
   <div id="modal-recipe-builder" class="modal-overlay hidden">
     <div class="glass-card modal-card">
       <div class="modal-title"><i class="fa-solid fa-utensils text-amber"></i> Recipe Builder</div>
-      <div class="modal-subtitle">Combine ingredients to auto-calculate per 100g macros</div>
+      <div class="modal-subtitle">Combine ingredients to sum total recipe macros</div>
       
       <form id="form-recipe-builder" onsubmit="saveRecipeAsCustomFood(event)">
+        <input type="hidden" id="recipe-edit-id">
         <input type="text" id="recipe-name" placeholder="Recipe Name (e.g., Morning Oats Bowl)" required>
         
         <div style="border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 10px 0; margin-bottom: 12px;">
@@ -462,7 +461,7 @@
         </div>
 
         <div style="background: rgba(15, 23, 42, 0.8); padding: 10px; border-radius: 10px; margin-bottom: 12px; font-size: 0.8rem;">
-          <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Calculated Recipe Macros (Per 100g)</div>
+          <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Recipe Macros (Whole Recipe)</div>
           <div style="display: flex; justify-content: space-between; margin-top: 4px; font-weight: 700;">
             <span class="text-cyan"><span id="recipe-calc-cal">0</span> kcal</span>
             <span class="text-pink">P: <span id="recipe-calc-protein">0g</span></span>
@@ -472,28 +471,13 @@
         </div>
 
         <div class="modal-actions">
-          <button type="submit" class="btn-primary">Save as Custom Food</button>
+          <button type="submit" class="btn-primary">Save Recipe</button>
           <button type="button" class="btn-secondary" onclick="closeRecipeModal()">Cancel</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Body Weight Modal -->
-  <div id="modal-log-weight" class="modal-overlay hidden">
-    <div class="glass-card modal-card">
-      <div class="modal-title"><i class="fa-solid fa-weight-scale text-cyan"></i> Log Body Weight</div>
-      <form id="form-log-weight" onsubmit="saveWeightLog(event)">
-        <input type="date" id="weight-log-date" required>
-        <input type="number" step="0.1" id="weight-log-val" placeholder="Weight (kg)" required>
-        <div class="modal-actions">
-          <button type="submit" class="btn-primary">Save Weight</button>
-          <button type="button" class="btn-secondary" onclick="closeWeightModal()">Cancel</button>
-        </div>
-      </form>
-    </div>
-  </div>
-  
   <!-- Modal: Edit Logged Portion -->
   <div id="modal-edit-portion" class="modal-overlay hidden">
     <div class="glass-card modal-card">
@@ -521,7 +505,21 @@
     </div>
   </div>
 
+  <!-- Body Weight Modal -->
+  <div id="modal-log-weight" class="modal-overlay hidden">
+    <div class="glass-card modal-card">
+      <div class="modal-title"><i class="fa-solid fa-weight-scale text-cyan"></i> Log Body Weight</div>
+      <form id="form-log-weight" onsubmit="saveWeightLog(event)">
+        <input type="date" id="weight-log-date" required>
+        <input type="number" step="0.1" id="weight-log-val" placeholder="Weight (kg)" required>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Save Weight</button>
+          <button type="button" class="btn-secondary" onclick="closeWeightModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
-

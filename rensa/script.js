@@ -814,98 +814,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateModalCalculations();
   };
 
-// Helper to open Edit Portion modal preset
-  window.setEditPortionPreset = function(grams) {
-    document.getElementById('edit-portion-weight').value = grams;
-  };
-
-  // Open Edit Portion Modal
-  window.openEditPortionModal = function(logId) {
-    const logItem = macroLogs.find(l => String(l.id) === String(logId));
-    if (!logItem) return;
-
-    document.getElementById('edit-portion-log-id').value = logItem.id;
-    document.getElementById('edit-portion-food-name').textContent = `${logItem.food_name} (${logItem.meal_type})`;
-    document.getElementById('edit-portion-weight').value = logItem.weight;
-
-    document.getElementById('modal-edit-portion').classList.remove('hidden');
-  };
-
-  // Close Edit Portion Modal
-  window.closeEditPortionModal = function() {
-    document.getElementById('modal-edit-portion').classList.add('hidden');
-  };
-
-  // Save Updated Portion and recalculate Macros
-  window.saveEditedPortion = async function(e) {
-    e.preventDefault();
-    const logId = document.getElementById('edit-portion-log-id').value;
-    const newWeight = parseFloat(document.getElementById('edit-portion-weight').value) || 0;
-
-    if (newWeight <= 0) {
-      alert("Please enter a valid weight in grams.");
-      return;
-    }
-
-    const logItem = macroLogs.find(l => String(l.id) === String(logId));
-    if (!logItem) return;
-
-    // Find reference food in library to compute precise per-gram ratio
-    const food = macroFoods.find(f => f.name.toLowerCase() === logItem.food_name.toLowerCase());
-
-    let newCal, newP, newC, newF;
-
-    if (food) {
-      const factor = newWeight / 100;
-      newCal = Math.round(food.calories * factor);
-      newP = Math.round(food.protein * factor * 10) / 10;
-      newC = Math.round(food.carbs * factor * 10) / 10;
-      newF = Math.round(food.fats * factor * 10) / 10;
-    } else {
-      // Fallback ratio from current logged values if food item was custom deleted
-      const oldWeight = logItem.weight || 100;
-      const ratio = newWeight / oldWeight;
-      newCal = Math.round(logItem.calories * ratio);
-      newP = Math.round(logItem.protein * ratio * 10) / 10;
-      newC = Math.round(logItem.carbs * ratio * 10) / 10;
-      newF = Math.round(logItem.fats * ratio * 10) / 10;
-    }
-
-    if (currentUser) {
-      const { error } = await supabaseClient
-        .from('macros_logs')
-        .update({
-          weight: Number(newWeight),
-          calories: Number(newCal),
-          protein: Number(newP),
-          carbs: Number(newC),
-          fats: Number(newF)
-        })
-        .eq('id', logId);
-
-      if (error) {
-        console.error("Supabase Edit Portion Error:", error);
-        alert("Failed to update portion: " + error.message);
-        return;
-      }
-    } else {
-      let allLogs = JSON.parse(localStorage.getItem('rensa_macro_logs')) || [];
-      const idx = allLogs.findIndex(l => String(l.id) === String(logId));
-      if (idx !== -1) {
-        allLogs[idx].weight = newWeight;
-        allLogs[idx].calories = newCal;
-        allLogs[idx].protein = newP;
-        allLogs[idx].carbs = newC;
-        allLogs[idx].fats = newF;
-        localStorage.setItem('rensa_macro_logs', JSON.stringify(allLogs));
-      }
-    }
-
-    closeEditPortionModal();
-    await loadMacroData();
-  };
-
-  // Render Daily Log Meals (Updated with Portion Edit Button)
   function renderMacroLogs() {
     const consumed = macroLogs.reduce((acc, curr) => ({
       calories: acc.calories + (Number(curr.calories) || 0),
@@ -981,7 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-// Copy Meals Helper (Completely Fixed Supabase Payload)
+  // Copy Meals Helper
   window.copyCurrentDayMeals = async function() {
     if (!macroLogs || macroLogs.length === 0) {
       alert("No meals logged for the currently selected date to copy.");
@@ -992,7 +900,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!targetDate) return;
 
     if (currentUser) {
-      // Build clean payload without any local ID or timestamp interference
       const copyInserts = macroLogs.map(l => ({
         user_id: currentUser.id,
         date: String(targetDate),
@@ -1005,8 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fats: Number(l.fats)
       }));
 
-      const { data, error } = await supabaseClient.from('macros_logs').insert(copyInserts).select();
-      
+      const { error } = await supabaseClient.from('macros_logs').insert(copyInserts);
       if (error) {
         console.error("Supabase Copy Error:", error);
         alert("Failed to copy meals to Supabase: " + error.message);
@@ -1016,9 +922,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const copyInserts = macroLogs.map(l => ({
         id: 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         user_id: 'local',
-        date: targetDate,
-        meal_type: l.meal_type,
-        food_name: l.food_name,
+        date: String(targetDate),
+        meal_type: String(l.meal_type),
+        food_name: String(l.food_name),
         weight: Number(l.weight),
         calories: Number(l.calories),
         protein: Number(l.protein),
@@ -1033,135 +939,94 @@ document.addEventListener('DOMContentLoaded', () => {
 
     alert(`Successfully copied ${macroLogs.length} meal item(s) to ${targetDate}!`);
 
-    // Switch view to target date & reload logs
     macroSelectedDate = targetDate;
     document.getElementById('macro-date-picker').value = targetDate;
     await loadMacroData();
   };
 
-  // Recipe Builder Handlers (Guaranteed Window Binding)
-  window.openRecipeModal = function() {
-    currentRecipeIngredients = [];
-    const recipeForm = document.getElementById('form-recipe-builder');
-    if (recipeForm) recipeForm.reset();
-    
-    const select = document.getElementById('recipe-ingredient-food');
-    if (select) {
-      select.innerHTML = '';
-      sortMacroFoodsAlphabetically();
-      macroFoods.forEach(f => {
-        select.innerHTML += `<option value="${f.id}">${f.name} (${f.calories} kcal/100g)</option>`;
-      });
-    }
-
-    renderRecipeIngredientsList();
-    document.getElementById('modal-recipe-builder').classList.remove('hidden');
+  window.setEditPortionPreset = function(grams) {
+    document.getElementById('edit-portion-weight').value = grams;
   };
 
-  window.closeRecipeModal = function() {
-    document.getElementById('modal-recipe-builder').classList.add('hidden');
+  window.openEditPortionModal = function(logId) {
+    const logItem = macroLogs.find(l => String(l.id) === String(logId));
+    if (!logItem) return;
+
+    document.getElementById('edit-portion-log-id').value = logItem.id;
+    document.getElementById('edit-portion-food-name').textContent = `${logItem.food_name} (${logItem.meal_type})`;
+    document.getElementById('edit-portion-weight').value = logItem.weight;
+
+    document.getElementById('modal-edit-portion').classList.remove('hidden');
   };
 
-  window.addIngredientToRecipe = function() {
-    const foodId = document.getElementById('recipe-ingredient-food').value;
-    const weight = parseFloat(document.getElementById('recipe-ingredient-weight').value) || 0;
-    const food = macroFoods.find(f => f.id == foodId);
-
-    if (!food || weight <= 0) return;
-
-    currentRecipeIngredients.push({ food, weight });
-    document.getElementById('recipe-ingredient-weight').value = '';
-    renderRecipeIngredientsList();
+  window.closeEditPortionModal = function() {
+    document.getElementById('modal-edit-portion').classList.add('hidden');
   };
 
-  window.removeRecipeIngredient = function(index) {
-    currentRecipeIngredients.splice(index, 1);
-    renderRecipeIngredientsList();
-  };
-
-  function renderRecipeIngredientsList() {
-    const list = document.getElementById('recipe-ingredients-list');
-    if (!list) return;
-    list.innerHTML = '';
-
-    let totalWeight = 0;
-    let totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
-
-    currentRecipeIngredients.forEach((item, idx) => {
-      const factor = item.weight / 100;
-      totalWeight += item.weight;
-      totalCal += item.food.calories * factor;
-      totalP += item.food.protein * factor;
-      totalC += item.food.carbs * factor;
-      totalF += item.food.fats * factor;
-
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; background:rgba(15,23,42,0.5); padding:4px 8px; border-radius:6px;';
-      row.innerHTML = `
-        <span>${item.food.name} (${item.weight}g)</span>
-        <button type="button" class="btn-icon del" style="width:20px; height:20px;" onclick="removeRecipeIngredient(${idx})">✕</button>
-      `;
-      list.appendChild(row);
-    });
-
-    if (totalWeight > 0) {
-      const per100Factor = 100 / totalWeight;
-      document.getElementById('recipe-calc-cal').textContent = Math.round(totalCal * per100Factor);
-      document.getElementById('recipe-calc-protein').textContent = `${Math.round(totalP * per100Factor * 10) / 10}g`;
-      document.getElementById('recipe-calc-carbs').textContent = `${Math.round(totalC * per100Factor * 10) / 10}g`;
-      document.getElementById('recipe-calc-fats').textContent = `${Math.round(totalF * per100Factor * 10) / 10}g`;
-    } else {
-      document.getElementById('recipe-calc-cal').textContent = '0';
-      document.getElementById('recipe-calc-protein').textContent = '0g';
-      document.getElementById('recipe-calc-carbs').textContent = '0g';
-      document.getElementById('recipe-calc-fats').textContent = '0g';
-    }
-  }
-
-  window.saveRecipeAsCustomFood = async function(e) {
+  window.saveEditedPortion = async function(e) {
     e.preventDefault();
-    const recipeName = document.getElementById('recipe-name').value.trim();
+    const logId = document.getElementById('edit-portion-log-id').value;
+    const newWeight = parseFloat(document.getElementById('edit-portion-weight').value) || 0;
 
-    let totalWeight = 0;
-    let totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
-
-    currentRecipeIngredients.forEach(item => {
-      const factor = item.weight / 100;
-      totalWeight += item.weight;
-      totalCal += item.food.calories * factor;
-      totalP += item.food.protein * factor;
-      totalC += item.food.carbs * factor;
-      totalF += item.food.fats * factor;
-    });
-
-    if (totalWeight <= 0) {
-      alert("Please add at least one ingredient to your recipe.");
+    if (newWeight <= 0) {
+      alert("Please enter a valid weight in grams.");
       return;
     }
 
-    const per100Factor = 100 / totalWeight;
-    const newFood = {
-      user_id: currentUser ? currentUser.id : 'local',
-      name: `${recipeName} (Recipe)`,
-      calories: Math.round(totalCal * per100Factor),
-      protein: Math.round(totalP * per100Factor * 10) / 10,
-      carbs: Math.round(totalC * per100Factor * 10) / 10,
-      fats: Math.round(totalF * per100Factor * 10) / 10
-    };
+    const logItem = macroLogs.find(l => String(l.id) === String(logId));
+    if (!logItem) return;
 
-    if (currentUser) {
-      const { data } = await supabaseClient.from('macros_foods').insert([newFood]).select();
-      if (data) macroFoods.push(data[0]);
+    const food = macroFoods.find(f => f.name.toLowerCase() === logItem.food_name.toLowerCase());
+
+    let newCal, newP, newC, newF;
+
+    if (food) {
+      const factor = newWeight / 100;
+      newCal = Math.round(food.calories * factor);
+      newP = Math.round(food.protein * factor * 10) / 10;
+      newC = Math.round(food.carbs * factor * 10) / 10;
+      newF = Math.round(food.fats * factor * 10) / 10;
     } else {
-      newFood.id = 'f_' + Date.now();
-      macroFoods.push(newFood);
-      localStorage.setItem('rensa_macro_foods', JSON.stringify(macroFoods));
+      const oldWeight = logItem.weight || 100;
+      const ratio = newWeight / oldWeight;
+      newCal = Math.round(logItem.calories * ratio);
+      newP = Math.round(logItem.protein * ratio * 10) / 10;
+      newC = Math.round(logItem.carbs * ratio * 10) / 10;
+      newF = Math.round(logItem.fats * ratio * 10) / 10;
     }
 
-    sortMacroFoodsAlphabetically();
-    closeRecipeModal();
-    renderMacroFoodLibrary();
-    alert(`Saved "${recipeName}" as a custom food item!`);
+    if (currentUser) {
+      const { error } = await supabaseClient
+        .from('macros_logs')
+        .update({
+          weight: Number(newWeight),
+          calories: Number(newCal),
+          protein: Number(newP),
+          carbs: Number(newC),
+          fats: Number(newF)
+        })
+        .eq('id', logId);
+
+      if (error) {
+        console.error("Supabase Edit Portion Error:", error);
+        alert("Failed to update portion: " + error.message);
+        return;
+      }
+    } else {
+      let allLogs = JSON.parse(localStorage.getItem('rensa_macro_logs')) || [];
+      const idx = allLogs.findIndex(l => String(l.id) === String(logId));
+      if (idx !== -1) {
+        allLogs[idx].weight = newWeight;
+        allLogs[idx].calories = newCal;
+        allLogs[idx].protein = newP;
+        allLogs[idx].carbs = newC;
+        allLogs[idx].fats = newF;
+        localStorage.setItem('rensa_macro_logs', JSON.stringify(allLogs));
+      }
+    }
+
+    closeEditPortionModal();
+    await loadMacroData();
   };
 
   window.saveMacroTargets = function(e) {
@@ -1190,15 +1055,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     filtered.forEach(food => {
+      const isRecipe = food.ingredients && food.ingredients.length > 0;
       const item = document.createElement('div');
       item.className = 'food-list-item';
       item.innerHTML = `
         <div class="food-item-header">
-          <span class="food-item-name">${food.name}</span>
+          <span class="food-item-name">${food.name} ${isRecipe ? '<span style="font-size:0.7rem; color:#f59e0b;">(Recipe)</span>' : ''}</span>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span class="food-item-cal">${food.calories} kcal / 100g</span>
+            <span class="food-item-cal">${food.calories} kcal ${isRecipe ? 'total' : '/ 100g'}</span>
             <div class="food-item-actions">
-              <button class="btn-icon" style="width:24px; height:24px;" onclick="openEditFoodModal('${food.id}')">✎</button>
+              <button class="btn-icon" style="width:24px; height:24px;" onclick="${isRecipe ? `openEditRecipeModal('${food.id}')` : `openEditFoodModal('${food.id}')`}">✎</button>
               <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteCustomFood('${food.id}')">✕</button>
             </div>
           </div>
@@ -1226,6 +1092,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.onMacroDateChange = function(val) { macroSelectedDate = val; loadMacroData(); };
   window.setMacroToday = function() { macroSelectedDate = new Date().toISOString().split('T')[0]; loadMacroData(); };
 
+  // Populates Food Dropdown with Categorized Single Foods & Recipes
   window.openAddLogModal = function(meal = 'Lunch') {
     document.getElementById('modal-log-date').value = macroSelectedDate;
     document.getElementById('modal-log-meal').value = meal;
@@ -1233,9 +1100,23 @@ document.addEventListener('DOMContentLoaded', () => {
     select.innerHTML = '';
     
     sortMacroFoodsAlphabetically();
-    macroFoods.forEach(f => {
-      select.innerHTML += `<option value="${f.id}">${f.name} (${f.calories} kcal/100g)</option>`;
+
+    const singleFoods = macroFoods.filter(f => !f.ingredients || f.ingredients.length === 0);
+    const recipes = macroFoods.filter(f => f.ingredients && f.ingredients.length > 0);
+
+    let optGroupFoods = '<optgroup label="Single Foods">';
+    singleFoods.forEach(f => {
+      optGroupFoods += `<option value="${f.id}">${f.name} (${f.calories} kcal/100g)</option>`;
     });
+    optGroupFoods += '</optgroup>';
+
+    let optGroupRecipes = '<optgroup label="Recipes">';
+    recipes.forEach(r => {
+      optGroupRecipes += `<option value="${r.id}">${r.name} (${r.calories} kcal total)</option>`;
+    });
+    optGroupRecipes += '</optgroup>';
+
+    select.innerHTML = optGroupFoods + optGroupRecipes;
     updateModalCalculations();
     document.getElementById('modal-add-log').classList.remove('hidden');
   };
@@ -1245,9 +1126,12 @@ document.addEventListener('DOMContentLoaded', () => {
   window.updateModalCalculations = function() {
     const foodId = document.getElementById('modal-log-food').value;
     const weight = parseFloat(document.getElementById('modal-log-weight').value) || 0;
-    const food = macroFoods.find(f => f.id == foodId);
+    const food = macroFoods.find(f => String(f.id) === String(foodId));
+    
     if (food) {
-      const factor = weight / 100;
+      const isRecipe = food.ingredients && food.ingredients.length > 0;
+      const factor = isRecipe ? 1 : (weight / 100);
+
       document.getElementById('preview-calc-cal').textContent = Math.round(food.calories * factor);
       document.getElementById('preview-calc-protein').textContent = `${Math.round(food.protein * factor * 10)/10}g`;
       document.getElementById('preview-calc-carbs').textContent = `${Math.round(food.carbs * factor * 10)/10}g`;
@@ -1255,26 +1139,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-window.saveLoggedFood = async function(e) {
+  window.saveLoggedFood = async function(e) {
     e.preventDefault();
     const date = document.getElementById('modal-log-date').value;
     const meal_type = document.getElementById('modal-log-meal').value;
     const foodId = document.getElementById('modal-log-food').value;
     const weight = parseFloat(document.getElementById('modal-log-weight').value) || 100;
     
-    // Convert IDs to string for reliable comparisons
     const food = macroFoods.find(f => String(f.id) === String(foodId));
     if (!food) {
       alert("Please select a valid food item from the menu.");
       return;
     }
 
-    const factor = weight / 100;
+    const isRecipe = food.ingredients && food.ingredients.length > 0;
+    const factor = isRecipe ? 1 : (weight / 100);
+
     const logEntry = {
       date: String(date),
       meal_type: String(meal_type),
       food_name: String(food.name),
-      weight: Number(weight),
+      weight: Number(isRecipe ? 100 : weight),
       calories: Math.round(food.calories * factor),
       protein: Math.round(food.protein * factor * 10) / 10,
       carbs: Math.round(food.carbs * factor * 10) / 10,
@@ -1298,8 +1183,6 @@ window.saveLoggedFood = async function(e) {
     }
 
     closeAddLogModal();
-
-    // Automatically sync active date view to logged date & refresh
     macroSelectedDate = date;
     document.getElementById('macro-date-picker').value = date;
     await loadMacroData();
@@ -1310,10 +1193,10 @@ window.saveLoggedFood = async function(e) {
       await supabaseClient.from('macros_logs').delete().eq('id', id);
     } else {
       let allLogs = JSON.parse(localStorage.getItem('rensa_macro_logs')) || [];
-      allLogs = allLogs.filter(l => l.id !== id);
+      allLogs = allLogs.filter(l => String(l.id) !== String(id));
       localStorage.setItem('rensa_macro_logs', JSON.stringify(allLogs));
     }
-    macroLogs = macroLogs.filter(i => i.id !== id);
+    macroLogs = macroLogs.filter(i => String(i.id) !== String(id));
     renderMacroLogs();
   };
 
@@ -1325,7 +1208,7 @@ window.saveLoggedFood = async function(e) {
   };
 
   window.openEditFoodModal = function(id) {
-    const food = macroFoods.find(f => f.id == id);
+    const food = macroFoods.find(f => String(f.id) === String(id));
     if (!food) return;
 
     document.getElementById('modal-food-edit-id').value = food.id;
@@ -1340,15 +1223,15 @@ window.saveLoggedFood = async function(e) {
   };
 
   window.deleteCustomFood = async function(id) {
-    if (!confirm("Delete this food item from your database?")) return;
+    if (!confirm("Delete this food item or recipe from your database?")) return;
 
     if (currentUser) {
       await supabaseClient.from('macros_foods').delete().eq('id', id);
     } else {
-      localStorage.setItem('rensa_macro_foods', JSON.stringify(macroFoods.filter(f => f.id != id)));
+      localStorage.setItem('rensa_macro_foods', JSON.stringify(macroFoods.filter(f => String(f.id) !== String(id))));
     }
 
-    macroFoods = macroFoods.filter(f => f.id != id);
+    macroFoods = macroFoods.filter(f => String(f.id) !== String(id));
     renderMacroFoodLibrary();
   };
 
@@ -1370,7 +1253,7 @@ window.saveLoggedFood = async function(e) {
       if (currentUser) {
         await supabaseClient.from('macros_foods').update({ name, calories, protein, carbs, fats }).eq('id', editId);
       }
-      const idx = macroFoods.findIndex(f => f.id == editId);
+      const idx = macroFoods.findIndex(f => String(f.id) === String(editId));
       if (idx !== -1) macroFoods[idx] = { ...macroFoods[idx], name, calories, protein, carbs, fats };
       if (!currentUser) localStorage.setItem('rensa_macro_foods', JSON.stringify(macroFoods));
     } else {
@@ -1390,21 +1273,42 @@ window.saveLoggedFood = async function(e) {
     renderMacroFoodLibrary();
   };
 
-  // Recipe Builder Handlers
+  // Recipe Builder Handlers (Calculates Total Recipe Accumulation)
   window.openRecipeModal = function() {
     currentRecipeIngredients = [];
-    document.getElementById('form-recipe-builder').reset();
+    document.getElementById('recipe-edit-id').value = '';
+    const recipeForm = document.getElementById('form-recipe-builder');
+    if (recipeForm) recipeForm.reset();
     
-    const select = document.getElementById('recipe-ingredient-food');
-    select.innerHTML = '';
-    sortMacroFoodsAlphabetically();
-    macroFoods.forEach(f => {
-      select.innerHTML += `<option value="${f.id}">${f.name} (${f.calories} kcal/100g)</option>`;
-    });
-
+    populateRecipeIngredientSelect();
     renderRecipeIngredientsList();
     document.getElementById('modal-recipe-builder').classList.remove('hidden');
   };
+
+  window.openEditRecipeModal = function(id) {
+    const recipe = macroFoods.find(f => String(f.id) === String(id));
+    if (!recipe || !recipe.ingredients) return;
+
+    document.getElementById('recipe-edit-id').value = recipe.id;
+    document.getElementById('recipe-name').value = recipe.name.replace(' (Recipe)', '');
+
+    currentRecipeIngredients = [...recipe.ingredients];
+    populateRecipeIngredientSelect();
+    renderRecipeIngredientsList();
+    document.getElementById('modal-recipe-builder').classList.remove('hidden');
+  };
+
+  function populateRecipeIngredientSelect() {
+    const select = document.getElementById('recipe-ingredient-food');
+    if (select) {
+      select.innerHTML = '';
+      sortMacroFoodsAlphabetically();
+      const singleFoods = macroFoods.filter(f => !f.ingredients || f.ingredients.length === 0);
+      singleFoods.forEach(f => {
+        select.innerHTML += `<option value="${f.id}">${f.name} (${f.calories} kcal/100g)</option>`;
+      });
+    }
+  }
 
   window.closeRecipeModal = function() {
     document.getElementById('modal-recipe-builder').classList.add('hidden');
@@ -1413,7 +1317,7 @@ window.saveLoggedFood = async function(e) {
   window.addIngredientToRecipe = function() {
     const foodId = document.getElementById('recipe-ingredient-food').value;
     const weight = parseFloat(document.getElementById('recipe-ingredient-weight').value) || 0;
-    const food = macroFoods.find(f => f.id == foodId);
+    const food = macroFoods.find(f => String(f.id) === String(foodId));
 
     if (!food || weight <= 0) return;
 
@@ -1429,14 +1333,13 @@ window.saveLoggedFood = async function(e) {
 
   function renderRecipeIngredientsList() {
     const list = document.getElementById('recipe-ingredients-list');
+    if (!list) return;
     list.innerHTML = '';
 
-    let totalWeight = 0;
     let totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
 
     currentRecipeIngredients.forEach((item, idx) => {
       const factor = item.weight / 100;
-      totalWeight += item.weight;
       totalCal += item.food.calories * factor;
       totalP += item.food.protein * factor;
       totalC += item.food.carbs * factor;
@@ -1451,68 +1354,68 @@ window.saveLoggedFood = async function(e) {
       list.appendChild(row);
     });
 
-    if (totalWeight > 0) {
-      const per100Factor = 100 / totalWeight;
-      document.getElementById('recipe-calc-cal').textContent = Math.round(totalCal * per100Factor);
-      document.getElementById('recipe-calc-protein').textContent = `${Math.round(totalP * per100Factor * 10) / 10}g`;
-      document.getElementById('recipe-calc-carbs').textContent = `${Math.round(totalC * per100Factor * 10) / 10}g`;
-      document.getElementById('recipe-calc-fats').textContent = `${Math.round(totalF * per100Factor * 10) / 10}g`;
-    } else {
-      document.getElementById('recipe-calc-cal').textContent = '0';
-      document.getElementById('recipe-calc-protein').textContent = '0g';
-      document.getElementById('recipe-calc-carbs').textContent = '0g';
-      document.getElementById('recipe-calc-fats').textContent = '0g';
-    }
+    // Displays accumulated totals for the entire recipe
+    document.getElementById('recipe-calc-cal').textContent = Math.round(totalCal);
+    document.getElementById('recipe-calc-protein').textContent = `${Math.round(totalP * 10) / 10}g`;
+    document.getElementById('recipe-calc-carbs').textContent = `${Math.round(totalC * 10) / 10}g`;
+    document.getElementById('recipe-calc-fats').textContent = `${Math.round(totalF * 10) / 10}g`;
   }
 
   window.saveRecipeAsCustomFood = async function(e) {
     e.preventDefault();
+    const editId = document.getElementById('recipe-edit-id').value;
     const recipeName = document.getElementById('recipe-name').value.trim();
 
-    let totalWeight = 0;
     let totalCal = 0, totalP = 0, totalC = 0, totalF = 0;
 
     currentRecipeIngredients.forEach(item => {
       const factor = item.weight / 100;
-      totalWeight += item.weight;
       totalCal += item.food.calories * factor;
       totalP += item.food.protein * factor;
       totalC += item.food.carbs * factor;
       totalF += item.food.fats * factor;
     });
 
-    if (totalWeight <= 0) {
+    if (currentRecipeIngredients.length === 0) {
       alert("Please add at least one ingredient to your recipe.");
       return;
     }
 
-    const per100Factor = 100 / totalWeight;
-    const newFood = {
-      user_id: currentUser ? currentUser.id : 'local',
+    const recipeData = {
       name: `${recipeName} (Recipe)`,
-      calories: Math.round(totalCal * per100Factor),
-      protein: Math.round(totalP * per100Factor * 10) / 10,
-      carbs: Math.round(totalC * per100Factor * 10) / 10,
-      fats: Math.round(totalF * per100Factor * 10) / 10
+      calories: Math.round(totalCal),
+      protein: Math.round(totalP * 10) / 10,
+      carbs: Math.round(totalC * 10) / 10,
+      fats: Math.round(totalF * 10) / 10,
+      ingredients: currentRecipeIngredients
     };
 
-    if (currentUser) {
-      const { data } = await supabaseClient.from('macros_foods').insert([newFood]).select();
-      if (data) macroFoods.push(data[0]);
+    if (editId) {
+      if (currentUser) {
+        await supabaseClient.from('macros_foods').update(recipeData).eq('id', editId);
+      }
+      const idx = macroFoods.findIndex(f => String(f.id) === String(editId));
+      if (idx !== -1) macroFoods[idx] = { ...macroFoods[idx], ...recipeData };
+      if (!currentUser) localStorage.setItem('rensa_macro_foods', JSON.stringify(macroFoods));
     } else {
-      newFood.id = 'f_' + Date.now();
-      macroFoods.push(newFood);
-      localStorage.setItem('rensa_macro_foods', JSON.stringify(macroFoods));
+      recipeData.user_id = currentUser ? currentUser.id : 'local';
+      if (currentUser) {
+        const { data } = await supabaseClient.from('macros_foods').insert([recipeData]).select();
+        if (data) macroFoods.push(data[0]);
+      } else {
+        recipeData.id = 'f_' + Date.now();
+        macroFoods.push(recipeData);
+        localStorage.setItem('rensa_macro_foods', JSON.stringify(macroFoods));
+      }
     }
 
     sortMacroFoodsAlphabetically();
     closeRecipeModal();
     renderMacroFoodLibrary();
-    alert(`Saved "${recipeName}" as a custom food item!`);
+    alert(`Saved "${recipeName}" recipe!`);
   };
 
   // Body Weight & Calorie Dual-Axis Chart
-// Open / Close Body Weight Modal
   window.openWeightModal = function() {
     const datePicker = document.getElementById('weight-log-date');
     const valInput = document.getElementById('weight-log-val');
@@ -1529,7 +1432,6 @@ window.saveLoggedFood = async function(e) {
     if (modal) modal.classList.add('hidden');
   };
 
-  // Fetch Weight Logs History
   async function fetchWeightHistory() {
     if (currentUser) {
       const { data, error } = await supabaseClient
@@ -1546,7 +1448,6 @@ window.saveLoggedFood = async function(e) {
     renderWeightChartAndList();
   }
 
-  // Save or Upsert Body Weight Entry
   window.saveWeightLog = async function(e) {
     e.preventDefault();
     const date = document.getElementById('weight-log-date').value;
@@ -1584,7 +1485,6 @@ window.saveLoggedFood = async function(e) {
     await fetchWeightHistory();
   };
 
-  // Delete Body Weight Entry
   window.deleteWeightLog = async function(id, date) {
     if (!confirm("Delete this weight entry?")) return;
 
