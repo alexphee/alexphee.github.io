@@ -814,6 +814,98 @@ document.addEventListener('DOMContentLoaded', () => {
     updateModalCalculations();
   };
 
+// Helper to open Edit Portion modal preset
+  window.setEditPortionPreset = function(grams) {
+    document.getElementById('edit-portion-weight').value = grams;
+  };
+
+  // Open Edit Portion Modal
+  window.openEditPortionModal = function(logId) {
+    const logItem = macroLogs.find(l => String(l.id) === String(logId));
+    if (!logItem) return;
+
+    document.getElementById('edit-portion-log-id').value = logItem.id;
+    document.getElementById('edit-portion-food-name').textContent = `${logItem.food_name} (${logItem.meal_type})`;
+    document.getElementById('edit-portion-weight').value = logItem.weight;
+
+    document.getElementById('modal-edit-portion').classList.remove('hidden');
+  };
+
+  // Close Edit Portion Modal
+  window.closeEditPortionModal = function() {
+    document.getElementById('modal-edit-portion').classList.add('hidden');
+  };
+
+  // Save Updated Portion and recalculate Macros
+  window.saveEditedPortion = async function(e) {
+    e.preventDefault();
+    const logId = document.getElementById('edit-portion-log-id').value;
+    const newWeight = parseFloat(document.getElementById('edit-portion-weight').value) || 0;
+
+    if (newWeight <= 0) {
+      alert("Please enter a valid weight in grams.");
+      return;
+    }
+
+    const logItem = macroLogs.find(l => String(l.id) === String(logId));
+    if (!logItem) return;
+
+    // Find reference food in library to compute precise per-gram ratio
+    const food = macroFoods.find(f => f.name.toLowerCase() === logItem.food_name.toLowerCase());
+
+    let newCal, newP, newC, newF;
+
+    if (food) {
+      const factor = newWeight / 100;
+      newCal = Math.round(food.calories * factor);
+      newP = Math.round(food.protein * factor * 10) / 10;
+      newC = Math.round(food.carbs * factor * 10) / 10;
+      newF = Math.round(food.fats * factor * 10) / 10;
+    } else {
+      // Fallback ratio from current logged values if food item was custom deleted
+      const oldWeight = logItem.weight || 100;
+      const ratio = newWeight / oldWeight;
+      newCal = Math.round(logItem.calories * ratio);
+      newP = Math.round(logItem.protein * ratio * 10) / 10;
+      newC = Math.round(logItem.carbs * ratio * 10) / 10;
+      newF = Math.round(logItem.fats * ratio * 10) / 10;
+    }
+
+    if (currentUser) {
+      const { error } = await supabaseClient
+        .from('macros_logs')
+        .update({
+          weight: Number(newWeight),
+          calories: Number(newCal),
+          protein: Number(newP),
+          carbs: Number(newC),
+          fats: Number(newF)
+        })
+        .eq('id', logId);
+
+      if (error) {
+        console.error("Supabase Edit Portion Error:", error);
+        alert("Failed to update portion: " + error.message);
+        return;
+      }
+    } else {
+      let allLogs = JSON.parse(localStorage.getItem('rensa_macro_logs')) || [];
+      const idx = allLogs.findIndex(l => String(l.id) === String(logId));
+      if (idx !== -1) {
+        allLogs[idx].weight = newWeight;
+        allLogs[idx].calories = newCal;
+        allLogs[idx].protein = newP;
+        allLogs[idx].carbs = newC;
+        allLogs[idx].fats = newF;
+        localStorage.setItem('rensa_macro_logs', JSON.stringify(allLogs));
+      }
+    }
+
+    closeEditPortionModal();
+    await loadMacroData();
+  };
+
+  // Render Daily Log Meals (Updated with Portion Edit Button)
   function renderMacroLogs() {
     const consumed = macroLogs.reduce((acc, curr) => ({
       calories: acc.calories + (Number(curr.calories) || 0),
@@ -859,7 +951,10 @@ document.addEventListener('DOMContentLoaded', () => {
         mealItems.map(item => `
           <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; background:rgba(15,23,42,0.5); padding:6px 10px; border-radius:8px; margin-top:4px;">
             <div><strong>${item.food_name}</strong> - ${item.weight}g (${item.calories} kcal)</div>
-            <button class="btn-icon del" onclick="deleteMacroLog('${item.id}')">✕</button>
+            <div style="display:flex; gap:4px;">
+              <button class="btn-icon" style="width:24px; height:24px;" onclick="openEditPortionModal('${item.id}')" title="Edit Portion">✎</button>
+              <button class="btn-icon del" style="width:24px; height:24px;" onclick="deleteMacroLog('${item.id}')" title="Delete">✕</button>
+            </div>
           </div>
         `).join('');
 
