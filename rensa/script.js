@@ -1160,21 +1160,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  window.saveLoggedFood = async function(e) {
+window.saveLoggedFood = async function(e) {
     e.preventDefault();
     const date = document.getElementById('modal-log-date').value;
     const meal_type = document.getElementById('modal-log-meal').value;
     const foodId = document.getElementById('modal-log-food').value;
     const weight = parseFloat(document.getElementById('modal-log-weight').value) || 100;
-    const food = macroFoods.find(f => f.id == foodId);
-    if (!food) return;
+    
+    // Convert IDs to string for reliable comparisons
+    const food = macroFoods.find(f => String(f.id) === String(foodId));
+    if (!food) {
+      alert("Please select a valid food item from the menu.");
+      return;
+    }
 
     const factor = weight / 100;
     const logEntry = {
-      id: 'log_' + Date.now(),
-      user_id: currentUser ? currentUser.id : 'local',
-      date, meal_type,
-      food_name: food.name, weight,
+      date: String(date),
+      meal_type: String(meal_type),
+      food_name: String(food.name),
+      weight: Number(weight),
       calories: Math.round(food.calories * factor),
       protein: Math.round(food.protein * factor * 10) / 10,
       carbs: Math.round(food.carbs * factor * 10) / 10,
@@ -1182,17 +1187,27 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     if (currentUser) {
-      const { data } = await supabaseClient.from('macros_logs').insert([logEntry]).select();
-      if (data) macroLogs.push(data[0]);
+      logEntry.user_id = currentUser.id;
+      const { data, error } = await supabaseClient.from('macros_logs').insert([logEntry]).select();
+      if (error) {
+        console.error("Supabase Save Log Error:", error);
+        alert("Failed to save entry: " + error.message);
+        return;
+      }
     } else {
+      logEntry.id = 'log_' + Date.now();
+      logEntry.user_id = 'local';
       let allLogs = JSON.parse(localStorage.getItem('rensa_macro_logs')) || [];
       allLogs.push(logEntry);
       localStorage.setItem('rensa_macro_logs', JSON.stringify(allLogs));
-      macroLogs.push(logEntry);
     }
 
     closeAddLogModal();
-    renderMacroLogs();
+
+    // Automatically sync active date view to logged date & refresh
+    macroSelectedDate = date;
+    document.getElementById('macro-date-picker').value = date;
+    await loadMacroData();
   };
 
   window.deleteMacroLog = async function(id) {
