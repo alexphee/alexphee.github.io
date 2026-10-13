@@ -1093,7 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.setMacroToday = function() { macroSelectedDate = new Date().toISOString().split('T')[0]; loadMacroData(); };
 
   // Populates Food Dropdown with Categorized Single Foods & Recipes
-  window.openAddLogModal = function(meal = 'Lunch') {
+window.openAddLogModal = function(meal = 'Lunch') {
     document.getElementById('modal-log-date').value = macroSelectedDate;
     document.getElementById('modal-log-meal').value = meal;
     const select = document.getElementById('modal-log-food');
@@ -1101,8 +1101,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     sortMacroFoodsAlphabetically();
 
-    const singleFoods = macroFoods.filter(f => !f.ingredients || f.ingredients.length === 0);
-    const recipes = macroFoods.filter(f => f.ingredients && f.ingredients.length > 0);
+    // Dual-check: ingredients array OR name ends with (Recipe)
+    const singleFoods = macroFoods.filter(f => (!f.ingredients || f.ingredients.length === 0) && !f.name.includes('(Recipe)'));
+    const recipes = macroFoods.filter(f => (f.ingredients && f.ingredients.length > 0) || f.name.includes('(Recipe)'));
 
     let optGroupFoods = '<optgroup label="Single Foods">';
     singleFoods.forEach(f => {
@@ -1382,7 +1383,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const recipeData = {
-      name: `${recipeName} (Recipe)`,
+      name: `${recipeName.replace(' (Recipe)', '')} (Recipe)`,
       calories: Math.round(totalCal),
       protein: Math.round(totalP * 10) / 10,
       carbs: Math.round(totalC * 10) / 10,
@@ -1392,18 +1393,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (editId) {
       if (currentUser) {
-        await supabaseClient.from('macros_foods').update(recipeData).eq('id', editId);
+        const { error } = await supabaseClient.from('macros_foods').update(recipeData).eq('id', editId);
+        if (error) console.error("Error updating recipe:", error);
       }
       const idx = macroFoods.findIndex(f => String(f.id) === String(editId));
       if (idx !== -1) macroFoods[idx] = { ...macroFoods[idx], ...recipeData };
       if (!currentUser) localStorage.setItem('rensa_macro_foods', JSON.stringify(macroFoods));
     } else {
-      recipeData.user_id = currentUser ? currentUser.id : 'local';
       if (currentUser) {
-        const { data } = await supabaseClient.from('macros_foods').insert([recipeData]).select();
-        if (data) macroFoods.push(data[0]);
+        recipeData.user_id = currentUser.id;
+        const { data, error } = await supabaseClient.from('macros_foods').insert([recipeData]).select();
+        if (error) {
+          console.error("Supabase Recipe Save Error:", error);
+          alert("Failed to save recipe: " + error.message);
+          return;
+        }
+        if (data && data.length > 0) macroFoods.push(data[0]);
       } else {
         recipeData.id = 'f_' + Date.now();
+        recipeData.user_id = 'local';
         macroFoods.push(recipeData);
         localStorage.setItem('rensa_macro_foods', JSON.stringify(macroFoods));
       }
